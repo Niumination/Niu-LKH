@@ -1,33 +1,33 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, Save, RotateCcw, Clock, MapPin, FileText, Calendar, User, CheckCircle2, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react'
+import { Send, Save, RotateCcw, MapPin, FileText, Calendar, User, CheckCircle2, AlertTriangle, Sparkles, RefreshCw, Briefcase, FileSignature, FolderOpen, Image, X } from 'lucide-react'
 import { getDraft, saveDraft, clearDraft, saveEntry, getProfile, saveProfile } from '../utils/storage'
+import { compressImage, estimateImageSize } from '../utils/image'
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDYqsyF2a6MkK3ZvLO798dHxYhuxwp6PQEJXzOUXiry1jRxEcluKkW-ePafc4j1qy6/exec'
 
-const LOKASI_OPTIONS = ['Kantor', 'Lapangan', 'Work From Home', 'Dinas Luar', 'Rapat Online', 'Lainnya']
-
 export default function FormLKH() {
   const navigate = useNavigate()
-  const [profile, setProfileState] = useState({ nama: '', nip: '', unit: '' })
+  const [profile, setProfileState] = useState({ nama: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' })
   const [formData, setFormData] = useState({
     nama: '',
-    nip: '',
-    unit: '',
+    jabatan: '',
+    unitKerja: '',
     tanggal: new Date().toISOString().split('T')[0],
-    jamMulai: '',
-    jamSelesai: '',
-    lokasi: '',
-    kegiatan: '',
-    keterangan: ''
+    uraianKegiatan: '',
+    tempat: '',
+    penjab: '',
+    dasarSurat: '',
+    outputHasilKerja: '',
+    buktiDukung: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState(null)
   const [activeTab, setActiveTab] = useState('form')
   const [focusedField, setFocusedField] = useState(null)
-  const [showLokasiPicker, setShowLokasiPicker] = useState(false)
   const [errors, setErrors] = useState({})
   const [draftSaved, setDraftSaved] = useState(false)
+  const [isCompressing, setIsCompressing] = useState(false)
   const [recentSubmissions, setRecentSubmissions] = useState([])
 
   // Load profile & draft on mount
@@ -38,22 +38,14 @@ export default function FormLKH() {
       setFormData(prev => ({
         ...prev,
         nama: savedProfile.nama,
-        nip: savedProfile.nip,
-        unit: savedProfile.unit,
+        jabatan: savedProfile.jabatan,
+        unitKerja: savedProfile.unitKerja,
       }))
     }
     const draft = getDraft()
     if (draft && draft.tanggal) {
       setFormData(prev => ({ ...prev, ...draft }))
     }
-    // Set default times
-    const now = new Date()
-    const defaultMulai = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-    setFormData(prev => ({
-      ...prev,
-      jamMulai: prev.jamMulai || defaultMulai,
-      jamSelesai: prev.jamSelesai || '',
-    }))
 
     loadRecent()
   }, [])
@@ -61,7 +53,7 @@ export default function FormLKH() {
   // Auto-save draft
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (formData.kegiatan || formData.lokasi) {
+      if (formData.uraianKegiatan || formData.tempat) {
         saveDraft(formData)
         setDraftSaved(true)
         setTimeout(() => setDraftSaved(false), 2000)
@@ -86,20 +78,48 @@ export default function FormLKH() {
     setErrors(prev => ({ ...prev, [name]: null }))
   }, [])
 
+  function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({ ...prev, buktiDukung: 'Hanya file gambar yang diperbolehkan' }))
+      return
+    }
+
+    // Compress image before storing
+    setIsCompressing(true)
+    compressImage(file)
+      .then(compressedDataUrl => {
+        setFormData(prev => ({ ...prev, buktiDukung: compressedDataUrl }))
+        setErrors(prev => ({ ...prev, buktiDukung: null }))
+        const sizeKB = estimateImageSize(compressedDataUrl)
+        console.log(`[Niu-LKH] Image compressed: ${sizeKB}KB`)
+      })
+      .catch(err => {
+        setErrors(prev => ({ ...prev, buktiDukung: err.message }))
+      })
+      .finally(() => {
+        setIsCompressing(false)
+      })
+  }
+
+  function removeBuktiDukung() {
+    setFormData(prev => ({ ...prev, buktiDukung: '' }))
+    // Reset file input
+    const fileInput = document.getElementById('buktiDukungInput')
+    if (fileInput) fileInput.value = ''
+  }
+
   function validate() {
     const errs = {}
     if (!formData.nama.trim()) errs.nama = 'Nama wajib diisi'
     if (!formData.tanggal) errs.tanggal = 'Tanggal wajib diisi'
-    if (!formData.jamMulai) errs.jamMulai = 'Jam mulai wajib diisi'
-    if (!formData.jamSelesai) errs.jamSelesai = 'Jam selesai wajib diisi'
-    if (!formData.lokasi) errs.lokasi = 'Lokasi wajib diisi'
-    if (!formData.kegiatan.trim()) errs.kegiatan = 'Deskripsi kegiatan wajib diisi'
-
-    // Validate time range
-    if (formData.jamMulai && formData.jamSelesai) {
-      const [a, b] = [formData.jamMulai, formData.jamSelesai]
-      if (a >= b) errs.jamSelesai = 'Jam selesai harus setelah jam mulai'
-    }
+    if (!formData.uraianKegiatan.trim()) errs.uraianKegiatan = 'Uraian kegiatan wajib diisi'
+    if (!formData.tempat.trim()) errs.tempat = 'Tempat wajib diisi'
+    if (!formData.penjab.trim()) errs.penjab = 'Penanggung jawab wajib diisi'
+    if (!formData.outputHasilKerja.trim()) errs.outputHasilKerja = 'Output/hasil kerja wajib diisi'
 
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -113,12 +133,14 @@ export default function FormLKH() {
     setSubmitStatus(null)
 
     try {
+      // Save locally (exclude buktiDukung from cloud sync)
+      const { buktiDukung, ...entryData } = formData
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          ...entryData,
           nama: profile.nama || formData.nama,
           timestamp: new Date().toISOString()
         })
@@ -133,14 +155,15 @@ export default function FormLKH() {
       // Reset form (keep profile & tanggal)
       setFormData(prev => ({
         nama: profile.nama || formData.nama,
-        nip: profile.nip || '',
-        unit: profile.unit || '',
+        jabatan: profile.jabatan || '',
+        unitKerja: profile.unitKerja || '',
         tanggal: prev.tanggal,
-        jamMulai: '',
-        jamSelesai: '',
-        lokasi: '',
-        kegiatan: '',
-        keterangan: ''
+        uraianKegiatan: '',
+        tempat: '',
+        penjab: '',
+        dasarSurat: '',
+        outputHasilKerja: '',
+        buktiDukung: ''
       }))
 
       loadRecent()
@@ -155,7 +178,13 @@ export default function FormLKH() {
   }
 
   function saveProfileData() {
-    const p = { nama: formData.nama, nip: formData.nip, unit: formData.unit }
+    const p = {
+      nama: formData.nama,
+      jabatan: formData.jabatan,
+      unitKerja: formData.unitKerja,
+      periodeMulai: formData.periodeMulai,
+      periodeSelesai: formData.periodeSelesai
+    }
     saveProfile(p)
     setProfileState(p)
     setSubmitStatus('profile-saved')
@@ -165,9 +194,12 @@ export default function FormLKH() {
   function applyDraft(entry) {
     setFormData(prev => ({
       ...prev,
-      kegiatan: entry.kegiatan,
-      lokasi: entry.lokasi,
-      keterangan: '',
+      uraianKegiatan: entry.uraianKegiatan,
+      tempat: entry.tempat,
+      penjab: entry.penjab,
+      dasarSurat: '',
+      outputHasilKerja: '',
+      buktiDukung: '',
     }))
     setActiveTab('form')
   }
@@ -198,7 +230,7 @@ export default function FormLKH() {
       </div>
 
       {activeTab === 'profile' ? (
-        /* Profile Settings */
+        /* Profile Settings — Format Excel: Nama, Jabatan, Unit Kerja, Periode */
         <div className="bg-cyber-900/60 border border-slate-800 rounded-2xl p-6 lg:p-8">
           <h3 className="text-white font-semibold text-lg mb-6">Profil Pengguna</h3>
           <div className="space-y-4">
@@ -209,16 +241,28 @@ export default function FormLKH() {
                 placeholder="Masukkan nama lengkap" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">NIP</label>
-              <input type="text" name="nip" value={formData.nip} onChange={handleChange}
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Jabatan</label>
+              <input type="text" name="jabatan" value={formData.jabatan} onChange={handleChange}
                 className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
-                placeholder="Nomor induk pegawai" />
+                placeholder="Contoh: Pranata Komputer Terampil" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Unit/Bagian</label>
-              <input type="text" name="unit" value={formData.unit} onChange={handleChange}
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Unit Kerja</label>
+              <input type="text" name="unitKerja" value={formData.unitKerja} onChange={handleChange}
                 className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
-                placeholder="Contoh: Diskominfo, Sekretariat" />
+                placeholder="Contoh: Bidang Layanan E-Government, Diskominfo" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Periode Mulai</label>
+                <input type="date" name="periodeMulai" value={formData.periodeMulai} onChange={handleChange}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Periode Selesai</label>
+                <input type="date" name="periodeSelesai" value={formData.periodeSelesai} onChange={handleChange}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
+              </div>
             </div>
             <button onClick={saveProfileData}
               className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-medium hover:from-cyan-500 hover:to-blue-500 transition-all">
@@ -228,101 +272,127 @@ export default function FormLKH() {
           </div>
         </div>
       ) : (
-        /* Main Form */
+        /* Main Form — Struktur Excel: Tanggal, Uraian Kegiatan, Tempat, Penjab, Dasar Surat, Output/Hasil Kerja */
         <form onSubmit={handleSubmit}>
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur opacity-20" />
             <div className="relative bg-cyber-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 lg:p-8">
               <div className="space-y-5">
-                {/* Auto-filled Name */}
+                {/* Auto-filled Profile Info */}
                 {profile.nama && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-cyan-500/5 border border-cyan-500/10 rounded-lg text-xs text-cyan-400">
-                    <User className="w-3 h-3" />
-                    <span>Melapor sebagai: <strong>{profile.nama}</strong></span>
-                    {profile.unit && <span className="text-slate-500">| {profile.unit}</span>}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 bg-cyan-500/5 border border-cyan-500/10 rounded-lg text-xs text-cyan-400">
+                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> <strong>{profile.nama}</strong></span>
+                    {profile.jabatan && <span className="text-slate-500">| {profile.jabatan}</span>}
+                    {profile.unitKerja && <span className="text-slate-500">| {profile.unitKerja}</span>}
                   </div>
                 )}
 
-                {/* Date & Time Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-cyan-400" /> Tanggal <span className="text-red-400">*</span>
-                    </label>
-                    <input type="date" name="tanggal" value={formData.tanggal} onChange={handleChange}
-                      max={todayStr}
-                      onFocus={() => setFocusedField('tanggal')} onBlur={() => setFocusedField(null)}
-                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
-                    {errors.tanggal && <p className="text-red-400 text-xs mt-1">{errors.tanggal}</p>}
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400" /> Jam Mulai <span className="text-red-400">*</span>
-                    </label>
-                    <input type="time" name="jamMulai" value={formData.jamMulai} onChange={handleChange}
-                      onFocus={() => setFocusedField('jamMulai')} onBlur={() => setFocusedField(null)}
-                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
-                    {errors.jamMulai && <p className="text-red-400 text-xs mt-1">{errors.jamMulai}</p>}
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
-                      <Clock className="w-3.5 h-3.5 text-purple-400" /> Jam Selesai <span className="text-red-400">*</span>
-                    </label>
-                    <input type="time" name="jamSelesai" value={formData.jamSelesai} onChange={handleChange}
-                      onFocus={() => setFocusedField('jamSelesai')} onBlur={() => setFocusedField(null)}
-                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
-                    {errors.jamSelesai && <p className="text-red-400 text-xs mt-1">{errors.jamSelesai}</p>}
-                  </div>
+                {/* Tanggal */}
+                <div className="max-w-xs">
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-cyan-400" /> Tanggal <span className="text-red-400">*</span>
+                  </label>
+                  <input type="date" name="tanggal" value={formData.tanggal} onChange={handleChange}
+                    max={todayStr}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
+                  {errors.tanggal && <p className="text-red-400 text-xs mt-1">{errors.tanggal}</p>}
                 </div>
 
-                {/* Lokasi */}
+                {/* Uraian Kegiatan */}
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-cyan-400" /> Lokasi <span className="text-red-400">*</span>
+                    <FileText className="w-3.5 h-3.5 text-cyan-400" /> Uraian Kegiatan <span className="text-red-400">*</span>
                   </label>
-                  <div className="relative">
-                    <input type="text" name="lokasi" value={formData.lokasi} onChange={handleChange}
-                      onFocus={() => { setFocusedField('lokasi'); setShowLokasiPicker(true); }}
-                      onBlur={() => setTimeout(() => setShowLokasiPicker(false), 200)}
-                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
-                      placeholder="Pilih atau ketik lokasi" autoComplete="off" />
-                    {showLokasiPicker && (
-                      <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-cyber-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
-                        {LOKASI_OPTIONS.map(loc => (
-                          <button key={loc} type="button" onMouseDown={() => { setFormData(prev => ({ ...prev, lokasi: loc })); setShowLokasiPicker(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${formData.lokasi === loc ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-300 hover:bg-slate-700/50'}`}>
-                            {loc}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {errors.lokasi && <p className="text-red-400 text-xs mt-1">{errors.lokasi}</p>}
-                </div>
-
-                {/* Kegiatan */}
-                <div>
-                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
-                    <FileText className="w-3.5 h-3.5 text-cyan-400" /> Deskripsi Kegiatan <span className="text-red-400">*</span>
-                  </label>
-                  <textarea name="kegiatan" value={formData.kegiatan} onChange={handleChange}
-                    onFocus={() => setFocusedField('kegiatan')} onBlur={() => setFocusedField(null)}
+                  <textarea name="uraianKegiatan" value={formData.uraianKegiatan} onChange={handleChange}
                     rows={4}
                     className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none resize-none"
                     placeholder="Jelaskan kegiatan yang dilakukan secara detail..." />
-                  {errors.kegiatan && <p className="text-red-400 text-xs mt-1">{errors.kegiatan}</p>}
+                  {errors.uraianKegiatan && <p className="text-red-400 text-xs mt-1">{errors.uraianKegiatan}</p>}
                 </div>
 
-                {/* Keterangan */}
+                {/* Tempat */}
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
-                    Keterangan Tambahan <span className="text-slate-500 text-xs">(opsional)</span>
+                    <MapPin className="w-3.5 h-3.5 text-purple-400" /> Tempat <span className="text-red-400">*</span>
                   </label>
-                  <textarea name="keterangan" value={formData.keterangan} onChange={handleChange}
-                    onFocus={() => setFocusedField('keterangan')} onBlur={() => setFocusedField(null)}
-                    rows={2}
-                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none resize-none"
-                    placeholder="Catatan tambahan (opsional)" />
+                  <input type="text" name="tempat" value={formData.tempat} onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
+                    placeholder="Contoh: Diskominfo, Lapangan Setdakab, WFH" />
+                  {errors.tempat && <p className="text-red-400 text-xs mt-1">{errors.tempat}</p>}
+                </div>
+
+                {/* Penjab */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-amber-400" /> Penanggung Jawab (Penjab) <span className="text-red-400">*</span>
+                  </label>
+                  <input type="text" name="penjab" value={formData.penjab} onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
+                    placeholder="Contoh: Kepala Dinas Kominfo" />
+                  {errors.penjab && <p className="text-red-400 text-xs mt-1">{errors.penjab}</p>}
+                </div>
+
+                {/* Dasar Surat */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
+                    <FileSignature className="w-3.5 h-3.5 text-slate-400" /> Dasar Surat <span className="text-slate-500 text-xs">(opsional)</span>
+                  </label>
+                  <input type="text" name="dasarSurat" value={formData.dasarSurat} onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
+                    placeholder="Nomor surat/dasar pelaksanaan kegiatan (jika ada)" />
+                </div>
+
+                {/* Bukti Dukung (Foto) */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
+                    <Image className="w-3.5 h-3.5 text-pink-400" /> Bukti Dukung <span className="text-slate-500 text-xs">(opsional, maks. 2MB)</span>
+                  </label>
+                  {formData.buktiDukung ? (
+                    <div className="relative inline-block group">
+                      <img src={formData.buktiDukung} alt="Preview bukti dukung"
+                        className="max-h-48 rounded-xl border border-slate-700 object-cover" />
+                      <button type="button" onClick={removeBuktiDukung}
+                        className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-red-600/80 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                        <X className="w-4 h-4 text-white" />
+                      </button>
+                      <span className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-slate-900/70 text-[10px] text-slate-400 rounded">
+                        {estimateImageSize(formData.buktiDukung)}KB
+                      </span>
+                    </div>
+                  ) : (
+                    <label className={`flex flex-col items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-xl transition-all ${
+                      isCompressing
+                        ? 'border-cyan-500/40 bg-cyan-500/5 cursor-wait'
+                        : 'border-slate-700 cursor-pointer hover:border-pink-500/40 hover:bg-pink-500/5'
+                    }`}>
+                      {isCompressing ? (
+                        <>
+                          <div className="w-6 h-6 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                          <span className="text-sm text-cyan-400">Memproses gambar...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Image className="w-6 h-6 text-slate-500" />
+                          <span className="text-sm text-slate-400">Klik untuk upload foto bukti dukung</span>
+                          <span className="text-xs text-slate-600">JPG, PNG, WEBP — dikompres otomatis</span>
+                        </>
+                      )}
+                      <input id="buktiDukungInput" type="file" accept="image/*" onChange={handleFileChange}
+                        className="hidden" disabled={isCompressing} />
+                    </label>
+                  )}
+                  {errors.buktiDukung && <p className="text-red-400 text-xs mt-1">{errors.buktiDukung}</p>}
+                </div>
+
+                {/* Output / Hasil Kerja */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
+                    <FolderOpen className="w-3.5 h-3.5 text-green-400" /> Output / Hasil Kerja <span className="text-red-400">*</span>
+                  </label>
+                  <input type="text" name="outputHasilKerja" value={formData.outputHasilKerja} onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
+                    placeholder="Contoh: Domain baru aktif, Laporan bulanan, Dokumen terverifikasi" />
+                  {errors.outputHasilKerja && <p className="text-red-400 text-xs mt-1">{errors.outputHasilKerja}</p>}
                 </div>
 
                 {/* Draft Indicator */}
@@ -358,8 +428,9 @@ export default function FormLKH() {
 
             {/* Reset */}
             <button type="button" onClick={() => { clearDraft(); setFormData({
-              nama: profile.nama || '', nip: profile.nip || '', unit: profile.unit || '',
-              tanggal: todayStr, jamMulai: '', jamSelesai: '', lokasi: '', kegiatan: '', keterangan: ''
+              nama: profile.nama || '', jabatan: profile.jabatan || '', unitKerja: profile.unitKerja || '',
+              tanggal: todayStr, uraianKegiatan: '', tempat: '', penjab: '',
+              dasarSurat: '', outputHasilKerja: '', buktiDukung: ''
             }) }} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-slate-400 hover:text-slate-300 transition-colors">
               <RotateCcw className="w-3.5 h-3.5" />
               Reset Form
@@ -412,8 +483,8 @@ export default function FormLKH() {
               <button key={entry.id} type="button" onClick={() => applyDraft(entry)}
                 className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 transition-all group text-left">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-200 truncate">{entry.kegiatan}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{entry.tanggal} &middot; {entry.jamMulai}-{entry.jamSelesai} &middot; {entry.lokasi}</p>
+                  <p className="text-sm text-slate-200 truncate">{entry.uraianKegiatan}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{entry.tanggal} &middot; {entry.tempat} &middot; {entry.outputHasilKerja}</p>
                 </div>
                 <span className="text-xs text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">Gunakan</span>
               </button>

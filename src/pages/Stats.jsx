@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { BarChart3, Clock, CalendarDays, MapPin, TrendingUp, Award, Sparkles } from 'lucide-react'
+import { BarChart3, CalendarDays, MapPin, TrendingUp, Award, Sparkles } from 'lucide-react'
 import { getEntries } from '../utils/storage'
 
 export default function Stats() {
@@ -26,39 +26,24 @@ export default function Stats() {
     if (timeRange === 'week') filtered = entries.filter(e => e.tanggal >= weekAgoStr)
     else if (timeRange === 'month') filtered = entries.filter(e => e.tanggal >= monthAgoStr)
     
-    // Total hours
-    const totalMinutes = filtered.reduce((acc, e) => {
-      if (e.jamMulai && e.jamSelesai) {
-        const [a, b] = [e.jamMulai, e.jamSelesai]
-        const diff = (parseInt(b.split(':')[0]) * 60 + parseInt(b.split(':')[1])) - (parseInt(a.split(':')[0]) * 60 + parseInt(a.split(':')[1]))
-        return acc + Math.max(0, diff)
-      }
-      return acc
-    }, 0)
-    
-    // Daily breakdown
+    // Daily breakdown (count only)
     const daily = {}
     filtered.forEach(e => {
-      daily[e.tanggal] = daily[e.tanggal] || { count: 0, minutes: 0 }
-      daily[e.tanggal].count++
-      if (e.jamMulai && e.jamSelesai) {
-        const [a, b] = [e.jamMulai, e.jamSelesai]
-        const diff = (parseInt(b.split(':')[0]) * 60 + parseInt(b.split(':')[1])) - (parseInt(a.split(':')[0]) * 60 + parseInt(a.split(':')[1]))
-        daily[e.tanggal].minutes += Math.max(0, diff)
-      }
+      daily[e.tanggal] = daily[e.tanggal] || 0
+      daily[e.tanggal]++
     })
     
-    // Location breakdown
-    const locations = {}
-    filtered.forEach(e => { locations[e.lokasi] = (locations[e.lokasi] || 0) + 1 })
-    const locationData = Object.entries(locations).sort((a, b) => b[1] - a[1])
+    // Tempat breakdown
+    const tempat = {}
+    filtered.forEach(e => { tempat[e.tempat] = (tempat[e.tempat] || 0) + 1 })
+    const tempatData = Object.entries(tempat).sort((a, b) => b[1] - a[1])
     
     // Top activities
     const activityWords = {}
     filtered.forEach(e => {
-      const words = e.kegiatan.toLowerCase().split(/\s+/).slice(0, 5)
+      const words = (e.uraianKegiatan || '').toLowerCase().split(/\s+/).slice(0, 5)
       words.forEach(w => {
-        if (w.length > 3 && !['dan', 'yang', 'dari', 'dengan', 'untuk', 'telah', 'akan', 'dapat'].includes(w)) {
+        if (w.length > 3 && !['dan', 'yang', 'dari', 'dengan', 'untuk', 'telah', 'akan', 'dapat', 'pada', 'ke', 'di'].includes(w)) {
           activityWords[w] = (activityWords[w] || 0) + 1
         }
       })
@@ -76,17 +61,13 @@ export default function Stats() {
     
     // Daily sorted for chart
     const dailySorted = Object.entries(daily).sort()
-    const maxCount = Math.max(...dailySorted.map(([_, d]) => d.count), 1)
-    const maxMinutes = Math.max(...dailySorted.map(([_, d]) => d.minutes), 1)
+    const maxCount = Math.max(...dailySorted.map(([_, c]) => c), 1)
     
     return {
       total: filtered.length,
-      totalHours: Math.round(totalMinutes / 60 * 10) / 10,
-      totalMinutes,
       dailySorted,
       maxCount,
-      maxMinutes,
-      locationData,
+      tempatData,
       topWords,
       busiestDay: busiestDay ? { name: dayNames[parseInt(busiestDay[0])], count: busiestDay[1] } : null,
       avgPerDay: filtered.length > 0 ? Math.round(filtered.length / Math.max(dailySorted.length, 1) * 10) / 10 : 0,
@@ -123,9 +104,9 @@ export default function Stats() {
       {/* Top Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatBox icon={BarChart3} value={stats.total} label="Total Laporan" color="from-cyan-500 to-blue-500" />
-        <StatBox icon={Clock} value={stats.totalHours} suffix="jam" label="Total Jam" color="from-purple-500 to-pink-500" />
         <StatBox icon={CalendarDays} value={stats.daysActive} label="Hari Aktif" color="from-green-500 to-emerald-500" />
-        <StatBox icon={TrendingUp} value={stats.avgPerDay} label="Rata-rata/Hari" color="from-amber-500 to-orange-500" />
+        <StatBox icon={TrendingUp} value={stats.avgPerDay} label="Rata-rata/Hari" color="from-purple-500 to-pink-500" />
+        <StatBox icon={MapPin} value={stats.tempatData.length} label="Lokasi" color="from-amber-500 to-orange-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -136,8 +117,8 @@ export default function Stats() {
             Grafik Harian
           </h3>
           <div className="space-y-1.5">
-            {stats.dailySorted.slice(-14).map(([date, data]) => {
-              const pct = (data.count / stats.maxCount) * 100
+            {stats.dailySorted.slice(-14).map(([date, count]) => {
+              const pct = (count / stats.maxCount) * 100
               const label = date.slice(5)
               return (
                 <div key={date} className="flex items-center gap-3">
@@ -146,21 +127,21 @@ export default function Stats() {
                     <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full transition-all duration-500"
                       style={{ width: `${Math.max(pct, 4)}%` }} />
                   </div>
-                  <span className="text-xs text-slate-400 w-8 text-right">{data.count}</span>
+                  <span className="text-xs text-slate-400 w-8 text-right">{count}</span>
                 </div>
               )
             })}
           </div>
         </div>
 
-        {/* Location Breakdown */}
+        {/* Tempat Breakdown */}
         <div className="bg-cyber-900/60 border border-slate-800 rounded-2xl p-6">
           <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
             <MapPin className="w-4 h-4 text-purple-400" />
-            Berdasarkan Lokasi
+            Berdasarkan Tempat
           </h3>
           <div className="space-y-3">
-            {stats.locationData.map(([loc, count]) => {
+            {stats.tempatData.map(([loc, count]) => {
               const pct = (count / stats.total) * 100
               return (
                 <div key={loc}>

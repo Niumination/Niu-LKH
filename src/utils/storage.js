@@ -11,7 +11,11 @@ export function getEntries() {
 
 export function saveEntry(entry) {
   const entries = getEntries()
-  entries.unshift({ ...entry, id: crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2, 8), createdAt: new Date().toISOString() })
+  entries.unshift({
+    ...entry,
+    id: crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    createdAt: new Date().toISOString()
+  })
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
   return entries
 }
@@ -40,8 +44,10 @@ export function clearDraft() {
 export function getProfile() {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
-    return raw ? JSON.parse(raw) : { nama: '', nip: '', unit: '' }
-  } catch { return { nama: '', nip: '', unit: '' } }
+    return raw ? JSON.parse(raw) : { nama: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' }
+  } catch {
+    return { nama: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' }
+  }
 }
 
 export function saveProfile(profile) {
@@ -56,14 +62,6 @@ export function clearAll() {
 export function getStats() {
   const entries = getEntries()
   const total = entries.length
-  const totalHours = entries.reduce((acc, e) => {
-    if (e.jamMulai && e.jamSelesai) {
-      const [a, b] = [e.jamMulai, e.jamSelesai]
-      const diff = (parseInt(b.split(':')[0]) * 60 + parseInt(b.split(':')[1])) - (parseInt(a.split(':')[0]) * 60 + parseInt(a.split(':')[1]))
-      return acc + Math.max(0, diff)
-    }
-    return acc
-  }, 0)
 
   const today = new Date().toISOString().split('T')[0]
   const todayEntries = entries.filter(e => e.tanggal === today)
@@ -71,10 +69,10 @@ export function getStats() {
   const thisWeek = getWeekRange()
   const weekEntries = entries.filter(e => e.tanggal >= thisWeek.start && e.tanggal <= thisWeek.end)
 
-  const locations = {}
-  entries.forEach(e => { locations[e.lokasi] = (locations[e.lokasi] || 0) + 1 })
+  const tempat = {}
+  entries.forEach(e => { tempat[e.tempat] = (tempat[e.tempat] || 0) + 1 })
 
-  return { total, totalHours, todayEntries: todayEntries.length, weekEntries: weekEntries.length, locations }
+  return { total, todayEntries: todayEntries.length, weekEntries: weekEntries.length, tempat }
 }
 
 function getWeekRange() {

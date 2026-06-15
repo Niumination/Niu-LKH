@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, ClipboardList, TrendingUp, MapPin, Sparkles, ArrowRight, CalendarDays } from 'lucide-react'
+import { ClipboardList, TrendingUp, MapPin, Sparkles, ArrowRight, CalendarDays, Image } from 'lucide-react'
 import { getStats, getEntriesByDate } from '../utils/storage'
 
 export default function Dashboard() {
@@ -33,9 +33,9 @@ export default function Dashboard() {
 
   const statCards = [
     { label: 'Total Laporan', value: stats.total, icon: ClipboardList, color: 'from-cyan-500 to-blue-500' },
-    { label: 'Jam Tercatat', value: Math.round(stats.totalHours / 60), suffix: 'jam', icon: Clock, color: 'from-purple-500 to-pink-500' },
     { label: 'Minggu Ini', value: stats.weekEntries, icon: TrendingUp, color: 'from-green-500 to-emerald-500' },
-    { label: 'Lokasi Aktif', value: Object.keys(stats.locations).length, icon: MapPin, color: 'from-amber-500 to-orange-500' },
+    { label: 'Hari Ini', value: stats.todayEntries, icon: CalendarDays, color: 'from-purple-500 to-pink-500' },
+    { label: 'Lokasi Aktif', value: Object.keys(stats.tempat).length, icon: MapPin, color: 'from-amber-500 to-orange-500' },
   ]
 
   return (
@@ -72,7 +72,7 @@ export default function Dashboard() {
             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${card.color} flex items-center justify-center mb-3`}>
               <card.icon className="w-5 h-5 text-white" />
             </div>
-            <p className="text-2xl lg:text-3xl font-bold text-white">{card.value}{card.suffix ? <span className="text-sm text-slate-400 font-normal"> {card.suffix}</span> : ''}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-white">{card.value}</p>
             <p className="text-xs text-slate-400 mt-1">{card.label}</p>
           </div>
         ))}
@@ -102,12 +102,18 @@ export default function Dashboard() {
                 <div key={entry.id} className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-200 font-medium text-sm truncate">{entry.kegiatan}</p>
+                      <p className="text-slate-200 font-medium text-sm truncate">{entry.uraianKegiatan}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                        <span>{entry.jamMulai} - {entry.jamSelesai}</span>
-                        <span>{entry.lokasi}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {entry.tempat}</span>
+                        <span>{entry.outputHasilKerja}</span>
                       </div>
                     </div>
+                    {entry.buktiDukung && (
+                      <div className="flex-shrink-0 ml-3">
+                        <img src={entry.buktiDukung} alt="Bukti"
+                          className="w-10 h-10 rounded-lg object-cover border border-slate-700" />
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -127,7 +133,7 @@ export default function Dashboard() {
             {[
               { label: 'Buat Laporan Baru', desc: 'Catat kegiatan harian Anda', to: '/form', color: 'cyan' },
               { label: 'Lihat Riwayat', desc: 'Cek laporan sebelumnya', to: '/history', color: 'purple' },
-              { label: 'Statistik Mingguan', desc: 'Rekap jam & aktivitas', to: '/stats', color: 'green' },
+              { label: 'Statistik', desc: 'Rekap aktivitas & lokasi', to: '/stats', color: 'green' },
             ].map((item, i) => (
               <button
                 key={i}

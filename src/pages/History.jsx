@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Trash2, MapPin, Clock, FileText, Search, Filter, X } from 'lucide-react'
-import { getEntries, deleteEntry, getCalendarData } from '../utils/storage'
+import { CalendarDays, ChevronLeft, ChevronRight, Trash2, MapPin, FileText, Search, Filter, X, Briefcase, FolderOpen, Image, Download, FileSpreadsheet, File as FileIcon } from 'lucide-react'
+import { getEntries, deleteEntry, getCalendarData, getProfile } from '../utils/storage'
+import { exportToPDF, exportToExcel, exportToCSV } from '../utils/export'
 
 export default function History() {
   const [entries, setEntries] = useState([])
@@ -9,8 +10,9 @@ export default function History() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [selectedDate, setSelectedDate] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterLokasi, setFilterLokasi] = useState('')
+  const [filterTempat, setFilterTempat] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [previewImage, setPreviewImage] = useState(null)
 
   useEffect(() => {
     setEntries(getEntries())
@@ -22,15 +24,16 @@ export default function History() {
     let result = entries
     if (selectedDate) result = result.filter(e => e.tanggal === selectedDate)
     if (searchQuery) result = result.filter(e =>
-      e.kegiatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.lokasi.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.keterangan?.toLowerCase().includes(searchQuery.toLowerCase())
+      e.uraianKegiatan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.tempat?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.outputHasilKerja?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.penjab?.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    if (filterLokasi) result = result.filter(e => e.lokasi === filterLokasi)
+    if (filterTempat) result = result.filter(e => e.tempat === filterTempat)
     return result
-  }, [entries, selectedDate, searchQuery, filterLokasi])
+  }, [entries, selectedDate, searchQuery, filterTempat])
 
-  const allLokasi = useMemo(() => [...new Set(entries.map(e => e.lokasi).filter(Boolean))], [entries])
+  const allTempat = useMemo(() => [...new Set(entries.map(e => e.tempat).filter(Boolean))], [entries])
 
   function handleDelete(id) {
     const updated = deleteEntry(id)
@@ -124,15 +127,33 @@ export default function History() {
           {/* Selected Date Entries */}
           {selectedDate && (
             <div className="mt-6 pt-6 border-t border-slate-800">
-              <h4 className="text-sm font-medium text-slate-300 mb-3">
-                Kegiatan — {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-slate-300">
+                  Kegiatan — {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </h4>
+                {filteredEntries.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => {
+                      const profile = getProfile()
+                      exportToPDF(filteredEntries, profile)
+                    }} className="flex items-center gap-1 px-2 py-1 bg-slate-800/60 hover:bg-red-800/30 border border-slate-700 hover:border-red-500/30 rounded-lg text-[10px] text-slate-400 hover:text-red-400 transition-all">
+                      <FileIcon className="w-3 h-3" /> PDF
+                    </button>
+                    <button onClick={() => {
+                      const profile = getProfile()
+                      exportToExcel(filteredEntries, profile)
+                    }} className="flex items-center gap-1 px-2 py-1 bg-slate-800/60 hover:bg-green-800/30 border border-slate-700 hover:border-green-500/30 rounded-lg text-[10px] text-slate-400 hover:text-green-400 transition-all">
+                      <FileSpreadsheet className="w-3 h-3" /> XLSX
+                    </button>
+                  </div>
+                )}
+              </div>
               {filteredEntries.length === 0 ? (
                 <p className="text-slate-500 text-sm py-4 text-center">Tidak ada kegiatan</p>
               ) : (
                 <div className="space-y-2">
                   {filteredEntries.map(entry => (
-                    <EntryCard key={entry.id} entry={entry} onDelete={setConfirmDelete} />
+                    <EntryCard key={entry.id} entry={entry} onDelete={setConfirmDelete} onPreview={setPreviewImage} />
                   ))}
                 </div>
               )}
@@ -147,29 +168,55 @@ export default function History() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Cari kegiatan..."
+                placeholder="Cari uraian kegiatan, tempat, output..."
                 className="w-full pl-10 pr-4 py-3 bg-cyber-900/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500/50 transition-all outline-none text-sm" />
             </div>
-            {allLokasi.length > 0 && (
+            {allTempat.length > 0 && (
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <select value={filterLokasi} onChange={e => setFilterLokasi(e.target.value)}
+                <select value={filterTempat} onChange={e => setFilterTempat(e.target.value)}
                   className="pl-10 pr-8 py-3 bg-cyber-900/60 border border-slate-800 rounded-xl text-slate-100 focus:border-cyan-500/50 transition-all outline-none text-sm appearance-none cursor-pointer min-w-[150px]">
-                  <option value="">Semua Lokasi</option>
-                  {allLokasi.map(l => <option key={l} value={l}>{l}</option>)}
+                  <option value="">Semua Tempat</option>
+                  {allTempat.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
             )}
           </div>
 
-          {/* Entry Count */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">{filteredEntries.length} laporan ditemukan</p>
-            {(selectedDate || searchQuery || filterLokasi) && (
-              <button onClick={() => { setSelectedDate(null); setSearchQuery(''); setFilterLokasi('') }}
-                className="flex items-center gap-1 text-xs text-cyan-400 hover:underline">
-                <X className="w-3 h-3" /> Hapus filter
-              </button>
+          {/* Entry Count & Export */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-slate-500">{filteredEntries.length} laporan ditemukan</p>
+              {(selectedDate || searchQuery || filterTempat) && (
+                <button onClick={() => { setSelectedDate(null); setSearchQuery(''); setFilterTempat('') }}
+                  className="flex items-center gap-1 text-xs text-cyan-400 hover:underline">
+                  <X className="w-3 h-3" /> Hapus filter
+                </button>
+              )}
+            </div>
+
+            {filteredEntries.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-600 uppercase tracking-wider">Export:</span>
+                <button onClick={() => {
+                  const profile = getProfile()
+                  exportToPDF(filteredEntries, profile)
+                }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-red-800/30 border border-slate-700 hover:border-red-500/30 rounded-lg text-xs text-slate-300 hover:text-red-400 transition-all" title="Export PDF dengan foto bukti dukung">
+                  <FileIcon className="w-3.5 h-3.5" /> PDF
+                </button>
+                <button onClick={() => {
+                  const profile = getProfile()
+                  exportToExcel(filteredEntries, profile)
+                }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-green-800/30 border border-slate-700 hover:border-green-500/30 rounded-lg text-xs text-slate-300 hover:text-green-400 transition-all" title="Export Excel">
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
+                </button>
+                <button onClick={() => {
+                  const profile = getProfile()
+                  exportToCSV(filteredEntries, profile)
+                }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-cyan-800/30 border border-slate-700 hover:border-cyan-500/30 rounded-lg text-xs text-slate-300 hover:text-cyan-400 transition-all" title="Export CSV">
+                  <Download className="w-3.5 h-3.5" /> CSV
+                </button>
+              </div>
             )}
           </div>
 
@@ -187,14 +234,22 @@ export default function History() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-cyan-400 font-medium bg-cyan-500/10 px-2 py-0.5 rounded-full">{entry.tanggal}</span>
-                        <span className="text-xs text-slate-500">{entry.jamMulai} - {entry.jamSelesai}</span>
+                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> {entry.tempat}
+                        </span>
                       </div>
-                      <p className="text-slate-200 font-medium">{entry.kegiatan}</p>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {entry.lokasi}</span>
-                        {entry.nama && <span>{entry.nama}</span>}
-                        {entry.keterangan && <span className="text-slate-600">— {entry.keterangan}</span>}
+                      <p className="text-slate-200 font-medium">{entry.uraianKegiatan}</p>
+                      <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-500">
+                        <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {entry.penjab}</span>
+                        {entry.dasarSurat && <span className="text-slate-600">Surat: {entry.dasarSurat}</span>}
+                        <span className="flex items-center gap-1 text-green-400/80"><FolderOpen className="w-3 h-3" /> {entry.outputHasilKerja}</span>
                       </div>
+                      {entry.buktiDukung && (
+                        <button onClick={() => setPreviewImage(entry.buktiDukung)}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-pink-400/70 hover:text-pink-400 transition-colors">
+                          <Image className="w-3 h-3" /> Lihat bukti dukung
+                        </button>
+                      )}
                     </div>
                     <button onClick={() => setConfirmDelete(entry.id)}
                       className="p-2 hover:bg-red-500/10 rounded-lg text-slate-600 hover:text-red-400 transition-all flex-shrink-0">
@@ -223,20 +278,40 @@ export default function History() {
           </div>
         </div>
       )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-3xl max-h-[90vh] mx-4" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPreviewImage(null)}
+              className="absolute -top-3 -right-3 p-1.5 bg-slate-900 border border-slate-700 rounded-full text-slate-400 hover:text-white hover:bg-red-600/60 transition-all z-10">
+              <X className="w-4 h-4" />
+            </button>
+            <img src={previewImage} alt="Bukti dukung"
+              className="max-w-full max-h-[85vh] rounded-2xl border border-slate-700 shadow-2xl object-contain bg-slate-900" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function EntryCard({ entry, onDelete }) {
+function EntryCard({ entry, onDelete, onPreview }) {
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-slate-200 text-sm font-medium">{entry.kegiatan}</p>
+          <p className="text-slate-200 text-sm font-medium">{entry.uraianKegiatan}</p>
           <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-            <span>{entry.jamMulai}-{entry.jamSelesai}</span>
-            <span>{entry.lokasi}</span>
+            <span>{entry.tempat}</span>
+            <span className="text-green-400/70">{entry.outputHasilKerja}</span>
           </div>
+          {entry.buktiDukung && (
+            <button onClick={() => onPreview(entry.buktiDukung)}
+              className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-pink-400/70 hover:text-pink-400 transition-colors">
+              <Image className="w-3 h-3" /> Bukti dukung
+            </button>
+          )}
         </div>
         <button onClick={() => onDelete(entry.id)} className="p-1 hover:bg-red-500/10 rounded text-slate-600 hover:text-red-400 transition-all">
           <Trash2 className="w-3.5 h-3.5" />

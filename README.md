@@ -4,14 +4,15 @@
 
 ## ✨ Fitur
 
-- 📝 **Form Laporan** — Input kegiatan dengan 7 field + autosave draft
-- 📊 **Dashboard** — Overview real-time statistik kegiatan
-- 📅 **Riwayat + Kalender** — Cari, filter, dan lihat kegiatan per tanggal
-- 📈 **Statistik** — Grafik harian, breakdown lokasi, kata kunci aktivitas
-- 💾 **Penyimpanan Lokal** — Data tersimpan di browser (localStorage)
-- ☁️ **Sinkronisasi Google Sheets** — Otomatis kirim ke Google Spreadsheet
-- 🌙 **Tema Gaming HUD** — Dark theme dengan aksen cyan-purple
-- 📱 **Responsif** — Layar desktop, tablet, dan mobile
+| 📝 **Form Laporan** — Input kegiatan dengan field: Tanggal, Uraian Kegiatan, Tempat, Penjab, Dasar Surat, Output/Hasil Kerja, + upload Bukti Dukung (foto, dikompres otomatis)
+| 📊 **Dashboard** — Overview real-time statistik kegiatan + thumbnail bukti dukung
+| 📅 **Riwayat + Kalender** — Cari, filter, lihat kegiatan per tanggal + preview foto bukti dukung
+| 📈 **Statistik** — Grafik harian, breakdown tempat, kata kunci aktivitas
+| 📤 **Export PDF / Excel / CSV** — Download laporan dengan foto bukti dukung (PDF) atau indikator foto (Excel/CSV)
+| 💾 **Penyimpanan Lokal** — Data tersimpan di browser (localStorage)
+| ☁️ **Sinkronisasi Google Sheets** — Otomatis kirim ke Google Spreadsheet
+| 🌙 **Tema Gaming HUD** — Dark theme dengan aksen cyan-purple
+| 📱 **Responsif** — Layar desktop, tablet, dan mobile
 
 ## 🚀 Tech Stack
 
@@ -53,7 +54,7 @@ Niu-LKH/
 ├── src/
 │   ├── components/   # Layout, reusable components
 │   ├── pages/        # Dashboard, FormLKH, History, Stats
-│   └── utils/        # storage.js, helpers
+│   └── utils/        # storage.js, export.js, image.js (helpers)
 ├── index.html
 ├── vite.config.js
 └── package.json
@@ -66,6 +67,8 @@ URL endpoint dikonfigurasi di `src/pages/FormLKH.jsx`.
 
 ## 📦 Status Proyek
 
+- **v3.1** — Fitur upload bukti dukung (foto) dengan kompresi otomatis + export PDF (foto embedded), Excel, CSV
+- **v3.0** — Restrukturisasi form sesuai format LKH Excel (Tanggal, Uraian Kegiatan, Tempat, Penjab, Dasar Surat, Output/Hasil Kerja)
 - **v2.0** — Rebuild total dari CRA ke Vite + Tailwind v4
 - Multi-page SPA dengan 4 halaman (Dashboard, Form, Riwayat, Statistik)
 - Penyimpanan lokal + sinkronisasi cloud

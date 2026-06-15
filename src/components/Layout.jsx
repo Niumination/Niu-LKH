@@ -57,7 +57,7 @@ export default function Layout() {
         <div className="p-4 border-t border-slate-800 hidden lg:block">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Sparkles className="w-3 h-3 text-cyan-400" />
-            <span>Niu-LKH v2.0</span>
+            <span>Niu-LKH v3.1</span>
           </div>
         </div>
       </aside>
