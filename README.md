@@ -67,7 +67,7 @@ URL endpoint dikonfigurasi di `src/pages/FormLKH.jsx`.
 
 ## 📦 Status Proyek
 
-- **v3.1** — Fitur upload bukti dukung (foto) dengan kompresi otomatis + export PDF (foto embedded), Excel, CSV
+|- **v3.1** — Fitur upload bukti dukung (foto) dengan kompresi otomatis + export PDF (foto embedded), Excel, CSV. CI/CD auto-deploy via GitHub Actions.
 - **v3.0** — Restrukturisasi form sesuai format LKH Excel (Tanggal, Uraian Kegiatan, Tempat, Penjab, Dasar Surat, Output/Hasil Kerja)
 - **v2.0** — Rebuild total dari CRA ke Vite + Tailwind v4
 - Multi-page SPA dengan 4 halaman (Dashboard, Form, Riwayat, Statistik)
