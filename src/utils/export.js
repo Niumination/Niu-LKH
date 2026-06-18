@@ -1,9 +1,12 @@
 /**
  * Export utilities — PDF, Excel (XLSX), CSV
  * Supports embedded photo/bukti dukung in PDF output
+ *
+ * PDF: uses jspdf + jspdf-autotable v5 (standalone autoTable())
+ * XLSX: uses SheetJS with structured layout (merged cells, header section)
  */
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 
 /**
@@ -21,12 +24,41 @@ function formatDateID(dateStr) {
 }
 
 /**
- * Format month name in Indonesian
+ * Format date to dd MMMM yyyy (Indonesian)
  */
-function getMonthName(monthNum) {
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-  return months[monthNum - 1] || ''
+function formatDateShort(dateStr) {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
+  } catch {
+    return dateStr
+  }
+}
+
+/**
+ * Get day name in Indonesian
+ */
+function getDayName(dateStr) {
+  if (!dateStr) return ''
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+  try {
+    return days[new Date(dateStr).getDay()]
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Format time display
+ */
+function formatTime(jam) {
+  if (!jam) return '-'
+  // Already in HH:MM or HH:MM:SS format
+  if (jam.includes(':')) return jam.slice(0, 5)
+  return jam
 }
 
 // ──────────────────────────────────────────────
@@ -35,8 +67,9 @@ function getMonthName(monthNum) {
 
 /**
  * Export entries to PDF with embedded bukti dukung photos
+ * Uses jspdf-autotable v5+ standalone autoTable() API
  * @param {Array} entries - Array of entry objects
- * @param {Object} profile - Profile { nama, jabatan, unitKerja, periodeMulai, periodeSelesai }
+ * @param {Object} profile - Profile { nama, nip, gol, jabatan, unitKerja, periodeMulai, periodeSelesai }
  * @param {Object} [options] - { filename, title }
  */
 export function exportToPDF(entries, profile = {}, options = {}) {
@@ -64,28 +97,35 @@ export function exportToPDF(entries, profile = {}, options = {}) {
   // Profile info
   if (profile.nama) {
     doc.setFont('helvetica', 'bold')
-    doc.text(`Nama:`, margin, yHeader)
+    doc.text('Nama:', margin, yHeader)
     doc.setFont('helvetica', 'normal')
     doc.text(profile.nama, margin + 12, yHeader)
     yHeader += lineH
   }
+  if (profile.nip) {
+    doc.setFont('helvetica', 'bold')
+    doc.text('NIP:', margin, yHeader)
+    doc.setFont('helvetica', 'normal')
+    doc.text(profile.nip, margin + 12, yHeader)
+    yHeader += lineH
+  }
   if (profile.jabatan) {
     doc.setFont('helvetica', 'bold')
-    doc.text(`Jabatan:`, margin, yHeader)
+    doc.text('Jabatan:', margin, yHeader)
     doc.setFont('helvetica', 'normal')
     doc.text(profile.jabatan, margin + 12, yHeader)
     yHeader += lineH
   }
   if (profile.unitKerja) {
     doc.setFont('helvetica', 'bold')
-    doc.text(`Unit Kerja:`, margin, yHeader)
+    doc.text('Unit Kerja:', margin, yHeader)
     doc.setFont('helvetica', 'normal')
     doc.text(profile.unitKerja, margin + 16, yHeader)
     yHeader += lineH
   }
   if (profile.periodeMulai && profile.periodeSelesai) {
     doc.setFont('helvetica', 'bold')
-    doc.text(`Periode:`, margin, yHeader)
+    doc.text('Periode:', margin, yHeader)
     doc.setFont('helvetica', 'normal')
     doc.text(`${formatDateID(profile.periodeMulai)} — ${formatDateID(profile.periodeSelesai)}`,
       margin + 14, yHeader)
@@ -98,7 +138,7 @@ export function exportToPDF(entries, profile = {}, options = {}) {
   const lastDate = sorted[sorted.length - 1]?.tanggal
   if (firstDate && lastDate) {
     doc.setFont('helvetica', 'bold')
-    doc.text(`Laporan:`, margin, yHeader)
+    doc.text('Laporan:', margin, yHeader)
     doc.setFont('helvetica', 'normal')
     doc.text(`${formatDateID(firstDate)} — ${formatDateID(lastDate)}`,
       margin + 14, yHeader)
@@ -107,16 +147,20 @@ export function exportToPDF(entries, profile = {}, options = {}) {
 
   // Total entries
   doc.setFont('helvetica', 'bold')
-  doc.text(`Total:`, margin, yHeader)
+  doc.text('Total:', margin, yHeader)
   doc.setFont('helvetica', 'normal')
   doc.text(`${entries.length} kegiatan`, margin + 12, yHeader)
   yHeader += 6
 
   // ── Table ──
-  const tableHead = [['No', 'Tanggal', 'Uraian Kegiatan', 'Tempat', 'Penjab', 'Dasar Surat', 'Output/Hasil Kerja', 'Bukti Dukung']]
+  const tableHead = [
+    ['No', 'Hari/Tanggal', 'Jam', 'Uraian Kegiatan', 'Tempat',
+     'Penanggung Jawab', 'Dasar Surat', 'Hasil Kerja', 'Dukungan']
+  ]
   const tableBody = entries.map((entry, i) => [
     i + 1,
-    entry.tanggal || '-',
+    `${getDayName(entry.tanggal)}, ${formatDateShort(entry.tanggal)}`,
+    formatTime(entry.jam),
     entry.uraianKegiatan || '-',
     entry.tempat || '-',
     entry.penjab || '-',
@@ -125,10 +169,11 @@ export function exportToPDF(entries, profile = {}, options = {}) {
     entry.buktiDukung ? '✓' : '-',
   ])
 
-  // Column widths (landscape A4: 277mm usable width)
-  const colWidths = [10, 22, 70, 30, 35, 35, 35, 10]
+  // Column widths (landscape A4: 277mm usable, 9 columns)
+  const colWidths = [8, 22, 8, 60, 28, 30, 30, 30, 8]
 
-  doc.autoTable({
+  // Use standalone autoTable(doc, options) — jspdf-autotable v5 API
+  autoTable(doc, {
     head: tableHead,
     body: tableBody,
     startY: yHeader,
@@ -136,26 +181,27 @@ export function exportToPDF(entries, profile = {}, options = {}) {
     tableWidth: contentWidth,
     columnStyles: {
       0: { cellWidth: colWidths[0], halign: 'center' },
-      1: { cellWidth: colWidths[1], halign: 'center' },
-      2: { cellWidth: colWidths[2] },
+      1: { cellWidth: colWidths[1] },
+      2: { cellWidth: colWidths[2], halign: 'center' },
       3: { cellWidth: colWidths[3] },
       4: { cellWidth: colWidths[4] },
       5: { cellWidth: colWidths[5] },
       6: { cellWidth: colWidths[6] },
-      7: { cellWidth: colWidths[7], halign: 'center' },
+      7: { cellWidth: colWidths[7] },
+      8: { cellWidth: colWidths[8], halign: 'center' },
     },
     headStyles: {
       fillColor: [15, 15, 42],
       textColor: [34, 211, 238],
       fontStyle: 'bold',
-      fontSize: 7,
+      fontSize: 6,
       halign: 'center',
       valign: 'middle',
     },
     bodyStyles: {
-      fontSize: 6.5,
+      fontSize: 6,
       textColor: [200, 200, 200],
-      cellPadding: 2,
+      cellPadding: 1.5,
     },
     alternateRowStyles: {
       fillColor: [20, 20, 58, 30],
@@ -166,18 +212,16 @@ export function exportToPDF(entries, profile = {}, options = {}) {
       overflow: 'linebreak',
     },
     didDrawCell: (data) => {
-      // Embed bukti dukung image in column 7 (index 7)
-      if (data.column.index === 7 && data.cell.raw === '✓') {
+      // Embed bukti dukung image in column 8 (index 8)
+      if (data.column.index === 8 && data.cell.raw === '✓') {
         const entryIndex = data.row.index
         const entry = entries[entryIndex]
         if (entry?.buktiDukung) {
           try {
-            const imgWidth = 18
-            const imgHeight = 14
+            const imgWidth = 14
+            const imgHeight = 10
             const x = data.cell.x + (data.cell.width - imgWidth) / 2
             const y = data.cell.y + (data.cell.height - imgHeight) / 2
-
-            // Format detection
             const format = entry.buktiDukung.includes('image/png') ? 'PNG' : 'JPEG'
             doc.addImage(entry.buktiDukung, format, x, y, imgWidth, imgHeight)
           } catch (e) {
@@ -187,15 +231,14 @@ export function exportToPDF(entries, profile = {}, options = {}) {
       }
     },
     didParseCell: (data) => {
-      // Make image indicator cells have enough height
-      if (data.column.index === 7 && data.cell.raw === '✓') {
-        data.cell.styles.minCellHeight = 16
+      if (data.column.index === 8 && data.cell.raw === '✓') {
+        data.cell.styles.minCellHeight = 14
       }
     },
   })
 
   // ── Footer (page numbers) ──
-  const totalPages = doc.internal.getNumberOfPages()
+  const totalPages = doc.getNumberOfPages()
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i)
     doc.setFontSize(7)
@@ -218,7 +261,8 @@ export function exportToPDF(entries, profile = {}, options = {}) {
 // ──────────────────────────────────────────────
 
 /**
- * Export entries to Excel (.xlsx) with photo indicator
+ * Export entries to structured Excel (.xlsx) with proper LKH layout
+ * Uses merged cells for header sections, structured columns
  */
 export function exportToExcel(entries, profile = {}, options = {}) {
   if (!entries || entries.length === 0) {
@@ -226,29 +270,121 @@ export function exportToExcel(entries, profile = {}, options = {}) {
     return
   }
 
-  // ── Data Sheet ──
-  const headerRow = [
-    'No', 'Tanggal', 'Uraian Kegiatan', 'Tempat',
-    'Penanggung Jawab', 'Dasar Surat', 'Output/Hasil Kerja', 'Bukti Dukung'
+  const sorted = [...entries].sort((a, b) => a.tanggal?.localeCompare(b.tanggal || ''))
+  const firstDate = sorted[0]?.tanggal
+  const lastDate = sorted[sorted.length - 1]?.tanggal
+  const numCols = 9 // No, Hari/Tanggal, Jam, Kegiatan, Tempat, Penjab, Dasar Surat, Hasil Kerja, Dukungan
+
+  // ── Build rows ──
+  const rows = []
+
+  // Row 0: Title (merged across all columns)
+  rows.push(['LAPORAN KEGIATAN HARIAN (LKH)'])
+
+  // Row 1: Empty
+  rows.push([])
+
+  // Row 2: Profile header
+  let rowIdx = 2
+  rows.push(['Nama', profile.nama || ''])
+  rows.push(['NIP', profile.nip || ''])
+  rows.push(['Pangkat/Gol', profile.gol || ''])
+  rows.push(['Jabatan', profile.jabatan || ''])
+  rows.push(['Unit Kerja', profile.unitKerja || ''])
+  if (profile.periodeMulai && profile.periodeSelesai) {
+    rows.push([`Periode: ${formatDateShort(profile.periodeMulai)} — ${formatDateShort(profile.periodeSelesai)}`])
+  }
+
+  // Empty row before table
+  rows.push([])
+  rowIdx = rows.length
+
+  // Table header
+  rows.push(['No', 'Hari/Tanggal', 'Jam', 'Uraian Kegiatan', 'Tempat',
+    'Penanggung Jawab', 'Dasar Surat', 'Output/Hasil Kerja', 'Ket.'])
+
+  // Data rows
+  sorted.forEach((entry, i) => {
+    rows.push([
+      i + 1,
+      `${getDayName(entry.tanggal)}, ${formatDateShort(entry.tanggal)}`,
+      formatTime(entry.jam),
+      entry.uraianKegiatan || '',
+      entry.tempat || '',
+      entry.penjab || '',
+      entry.dasarSurat || '',
+      entry.outputHasilKerja || '',
+      entry.buktiDukung ? 'Ada foto' : '',
+    ])
+  })
+
+  // Total row
+  const totalRowIdx = rows.length
+  const totalRow = new Array(numCols).fill('')
+  totalRow[0] = 'Jumlah'
+  totalRow[2] = `${sorted.length} kegiatan`
+  rows.push(totalRow)
+
+  // Empty row
+  rows.push([])
+
+  // Signature section
+  rows.push(['Mengetahui,'])
+  rows.push(['Kepala Dinas / Atasan Langsung'])
+  rows.push([])
+  rows.push([]) // signature line
+  rows.push(['( _______________________________ )'])
+  rows.push([])
+  rows.push(['NIP. ........................................'])
+
+  // ── Create Sheet ──
+  const ws = XLSX.utils.aoa_to_sheet(rows)
+
+  // ── Merged cells ──
+  const merges = [
+    // Title row (A1:I1)
+    { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } },
+    // Periode row (if present)
+  ]
+  // Add period row merge if it exists
+  if (profile.periodeMulai && profile.periodeSelesai) {
+    const periodeRow = rows.findIndex(r =>
+      r[0] && typeof r[0] === 'string' && r[0].startsWith('Periode:'))
+    if (periodeRow >= 0) {
+      merges.push({ s: { r: periodeRow, c: 0 }, e: { r: periodeRow, c: numCols - 1 } })
+    }
+  }
+
+  ws['!merges'] = merges
+
+  // ── Column widths ──
+  ws['!cols'] = [
+    { wch: 5 },   // No
+    { wch: 24 },  // Hari/Tanggal
+    { wch: 6 },   // Jam
+    { wch: 55 },  // Uraian Kegiatan
+    { wch: 22 },  // Tempat
+    { wch: 28 },  // Penjab
+    { wch: 28 },  // Dasar Surat
+    { wch: 32 },  // Output/Hasil Kerja
+    { wch: 10 },  // Ket
   ]
 
-  const dataRows = entries.map((entry, i) => [
-    i + 1,
-    entry.tanggal || '',
-    entry.uraianKegiatan || '',
-    entry.tempat || '',
-    entry.penjab || '',
-    entry.dasarSurat || '',
-    entry.outputHasilKerja || '',
-    entry.buktiDukung ? '✓ Ada foto' : '-',
-  ])
+  // ── Row heights (title row taller) ──
+  ws['!rows'] = []
+  ws['!rows'][0] = { hpx: 36 }  // Title row
 
-  const wsData = [headerRow, ...dataRows]
+  // ── Workbook ──
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'LKH')
 
-  // ── Profile Sheet ──
+  // ── Profile sheet ──
   const profileRows = [
     ['Profil Pengguna'],
+    [],
     ['Nama', profile.nama || ''],
+    ['NIP', profile.nip || ''],
+    ['Pangkat/Gol', profile.gol || ''],
     ['Jabatan', profile.jabatan || ''],
     ['Unit Kerja', profile.unitKerja || ''],
     ['Periode Mulai', profile.periodeMulai || ''],
@@ -256,35 +392,14 @@ export function exportToExcel(entries, profile = {}, options = {}) {
     [],
     ['Ringkasan'],
     ['Total Kegiatan', entries.length],
-    ['Periode Data', `${entries[0]?.tanggal || '-'} s.d. ${entries[entries.length - 1]?.tanggal || '-'}`],
+    ['Periode Data', `${firstDate || '-'} s.d. ${lastDate || '-'}`],
     ['Diexport', new Date().toLocaleString('id-ID')],
   ]
-
-  // ── Workbook ──
-  const wb = XLSX.utils.book_new()
-
-  const ws = XLSX.utils.aoa_to_sheet(wsData)
-  // Column widths
-  ws['!cols'] = [
-    { wch: 5 },   // No
-    { wch: 14 },  // Tanggal
-    { wch: 50 },  // Uraian Kegiatan
-    { wch: 20 },  // Tempat
-    { wch: 25 },  // Penjab
-    { wch: 25 },  // Dasar Surat
-    { wch: 30 },  // Output/Hasil Kerja
-    { wch: 15 },  // Bukti Dukung
-  ]
-
   const wsProfile = XLSX.utils.aoa_to_sheet(profileRows)
-  wsProfile['!cols'] = [
-    { wch: 20 },
-    { wch: 40 },
-  ]
-
-  XLSX.utils.book_append_sheet(wb, ws, 'Data LKH')
+  wsProfile['!cols'] = [{ wch: 20 }, { wch: 45 }]
   XLSX.utils.book_append_sheet(wb, wsProfile, 'Profil')
 
+  // ── Save ──
   const filename = options.filename || `LKH_${new Date().toISOString().split('T')[0]}.xlsx`
   XLSX.writeFile(wb, filename)
 }
@@ -295,7 +410,6 @@ export function exportToExcel(entries, profile = {}, options = {}) {
 
 /**
  * Export entries to CSV
- * CSV cannot embed images, so bukti dukung is indicated by ✓/✗ column
  */
 export function exportToCSV(entries, profile = {}, options = {}) {
   if (!entries || entries.length === 0) {
@@ -304,19 +418,20 @@ export function exportToCSV(entries, profile = {}, options = {}) {
   }
 
   const header = [
-    'No', 'Tanggal', 'Uraian Kegiatan', 'Tempat',
-    'Penanggung Jawab', 'Dasar Surat', 'Output/Hasil Kerja', 'Bukti Dukung'
+    'No', 'Hari/Tanggal', 'Jam', 'Uraian Kegiatan', 'Tempat',
+    'Penanggung Jawab', 'Dasar Surat', 'Output/Hasil Kerja', 'Ket'
   ]
 
   const rows = entries.map((entry, i) => [
     i + 1,
-    entry.tanggal || '',
+    `${getDayName(entry.tanggal)}, ${formatDateShort(entry.tanggal)}`,
+    formatTime(entry.jam),
     `"${(entry.uraianKegiatan || '').replace(/"/g, '""')}"`,
     `"${(entry.tempat || '').replace(/"/g, '""')}"`,
     `"${(entry.penjab || '').replace(/"/g, '""')}"`,
     `"${(entry.dasarSurat || '').replace(/"/g, '""')}"`,
     `"${(entry.outputHasilKerja || '').replace(/"/g, '""')}"`,
-    entry.buktiDukung ? 'Ada foto' : '-',
+    entry.buktiDukung ? 'Ada foto' : '',
   ])
 
   const csvContent = [
