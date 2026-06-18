@@ -57,6 +57,8 @@ export function saveProfile(profile) {
 export function clearAll() {
   localStorage.removeItem(STORAGE_KEY)
   localStorage.removeItem(DRAFT_KEY)
+  localStorage.removeItem('niu_lkh_seeded_v2')
+  localStorage.removeItem('niu_lkh_stats_range_set')
 }
 
 export function getStats() {
