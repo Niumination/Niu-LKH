@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send, Save, RotateCcw, MapPin, FileText, Calendar, User, CheckCircle2, AlertTriangle, Sparkles, RefreshCw, Briefcase, FileSignature, FolderOpen, Image, X } from 'lucide-react'
 import { getDraft, saveDraft, clearDraft, saveEntry, getProfile, saveProfile } from '../utils/storage'
+import { isSeeded } from '../utils/seed'
 import { compressImage, estimateImageSize } from '../utils/image'
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDYqsyF2a6MkK3ZvLO798dHxYhuxwp6PQEJXzOUXiry1jRxEcluKkW-ePafc4j1qy6/exec'
@@ -46,6 +47,30 @@ export default function FormLKH() {
         jabatan: savedProfile.jabatan,
         unitKerja: savedProfile.unitKerja,
       }))
+    } else {
+      // Auto-fill from seed data if available
+      const seed = isSeeded()
+      if (seed?.profile?.nama) {
+        const p = {
+          nama: seed.profile.nama,
+          nip: seed.profile.nip,
+          gol: seed.profile.gol,
+          jabatan: seed.profile.jabatan,
+          unitKerja: seed.profile.unitKerja,
+          periodeMulai: '2026-01-01',
+          periodeSelesai: '2026-06-30'
+        }
+        saveProfile(p)
+        setProfileState(p)
+        setFormData(prev => ({
+          ...prev,
+          nama: p.nama,
+          nip: p.nip,
+          gol: p.gol,
+          jabatan: p.jabatan,
+          unitKerja: p.unitKerja,
+        }))
+      }
     }
     const draft = getDraft()
     if (draft && draft.tanggal) {
@@ -138,9 +163,13 @@ export default function FormLKH() {
     setSubmitStatus(null)
 
     try {
-      // Save locally (exclude buktiDukung from cloud sync)
+      // Save locally FIRST — always succeeds regardless of network
+      saveEntry({ ...formData, nama: profile.nama || formData.nama })
+      clearDraft()
+
+      // Try cloud sync (best-effort, fire-and-forget)
       const { buktiDukung, ...entryData } = formData
-      await fetch(GOOGLE_SCRIPT_URL, {
+      fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
@@ -149,13 +178,12 @@ export default function FormLKH() {
           nama: profile.nama || formData.nama,
           timestamp: new Date().toISOString()
         })
+      }).catch(() => {
+        // Cloud sync failed — data is still safe in localStorage
+        console.warn('[Niu-LKH] Cloud sync skipped (offline or CORS)')
       })
 
-      // Save locally
-      saveEntry({ ...formData, nama: profile.nama || formData.nama })
-
       setSubmitStatus('success')
-      clearDraft()
 
       // Reset form (keep profile & tanggal)
       setFormData(prev => ({

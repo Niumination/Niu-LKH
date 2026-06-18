@@ -1,12 +1,27 @@
 import { useState, useEffect, useMemo } from 'react'
 import { BarChart3, CalendarDays, MapPin, TrendingUp, Award, Sparkles } from 'lucide-react'
 import { getEntries } from '../utils/storage'
+import { isSeeded } from '../utils/seed'
 
 export default function Stats() {
   const [entries, setEntries] = useState([])
   const [timeRange, setTimeRange] = useState('week')
 
-  useEffect(() => { setEntries(getEntries()) }, [])
+  useEffect(() => { 
+    setEntries(getEntries())
+    // Default to 'all' if seed data loaded (historical data, not recent)
+    if (isSeeded() && !localStorage.getItem('niu_lkh_stats_range_set')) {
+      setTimeRange('all')
+      localStorage.setItem('niu_lkh_stats_range_set', '1')
+    }
+  }, [])
+
+  // Reset the pref when entries are cleared
+  useEffect(() => {
+    if (entries.length === 0) {
+      localStorage.removeItem('niu_lkh_stats_range_set')
+    }
+  }, [entries.length])
 
   const stats = useMemo(() => {
     if (entries.length === 0) return null
