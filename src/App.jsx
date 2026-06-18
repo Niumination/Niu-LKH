@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import FormLKH from './pages/FormLKH'
 import History from './pages/History'
 import Stats from './pages/Stats'
+import ExcelPreview from './pages/ExcelPreview'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/form" element={<FormLKH />} />
         <Route path="/history" element={<History />} />
         <Route path="/stats" element={<Stats />} />
+        <Route path="/excel-preview" element={<ExcelPreview />} />
       </Route>
     </Routes>
   )

@@ -8,12 +8,15 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDYqsyF2a6Mk
 
 export default function FormLKH() {
   const navigate = useNavigate()
-  const [profile, setProfileState] = useState({ nama: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' })
+  const [profile, setProfileState] = useState({ nama: '', nip: '', gol: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' })
   const [formData, setFormData] = useState({
     nama: '',
+    nip: '',
+    gol: '',
     jabatan: '',
     unitKerja: '',
     tanggal: new Date().toISOString().split('T')[0],
+    jam: '',
     uraianKegiatan: '',
     tempat: '',
     penjab: '',
@@ -38,6 +41,8 @@ export default function FormLKH() {
       setFormData(prev => ({
         ...prev,
         nama: savedProfile.nama,
+        nip: savedProfile.nip,
+        gol: savedProfile.gol,
         jabatan: savedProfile.jabatan,
         unitKerja: savedProfile.unitKerja,
       }))
@@ -155,9 +160,12 @@ export default function FormLKH() {
       // Reset form (keep profile & tanggal)
       setFormData(prev => ({
         nama: profile.nama || formData.nama,
+        nip: profile.nip || '',
+        gol: profile.gol || '',
         jabatan: profile.jabatan || '',
         unitKerja: profile.unitKerja || '',
         tanggal: prev.tanggal,
+        jam: '',
         uraianKegiatan: '',
         tempat: '',
         penjab: '',
@@ -180,6 +188,8 @@ export default function FormLKH() {
   function saveProfileData() {
     const p = {
       nama: formData.nama,
+      nip: formData.nip,
+      gol: formData.gol,
       jabatan: formData.jabatan,
       unitKerja: formData.unitKerja,
       periodeMulai: formData.periodeMulai,
@@ -240,6 +250,20 @@ export default function FormLKH() {
                 className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
                 placeholder="Masukkan nama lengkap" />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">NIP</label>
+                <input type="text" name="nip" value={formData.nip} onChange={handleChange}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
+                  placeholder="19860727 202203 1 003" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Pangkat/Golongan</label>
+                <input type="text" name="gol" value={formData.gol} onChange={handleChange}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none"
+                  placeholder="Contoh: PENATA MUDA, II/d" />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Jabatan</label>
               <input type="text" name="jabatan" value={formData.jabatan} onChange={handleChange}
@@ -296,6 +320,15 @@ export default function FormLKH() {
                     max={todayStr}
                     className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
                   {errors.tanggal && <p className="text-red-400 text-xs mt-1">{errors.tanggal}</p>}
+                </div>
+
+                {/* Jam */}
+                <div className="max-w-[180px]">
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-cyan-400" /> Jam <span className="text-slate-500 text-xs">(opsional)</span>
+                  </label>
+                  <input type="time" name="jam" value={formData.jam} onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none" />
                 </div>
 
                 {/* Uraian Kegiatan */}
@@ -428,8 +461,8 @@ export default function FormLKH() {
 
             {/* Reset */}
             <button type="button" onClick={() => { clearDraft(); setFormData({
-              nama: profile.nama || '', jabatan: profile.jabatan || '', unitKerja: profile.unitKerja || '',
-              tanggal: todayStr, uraianKegiatan: '', tempat: '', penjab: '',
+              nama: profile.nama || '', nip: profile.nip || '', gol: profile.gol || '', jabatan: profile.jabatan || '', unitKerja: profile.unitKerja || '',
+              tanggal: todayStr, jam: '', uraianKegiatan: '', tempat: '', penjab: '',
               dasarSurat: '', outputHasilKerja: '', buktiDukung: ''
             }) }} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-slate-400 hover:text-slate-300 transition-colors">
               <RotateCcw className="w-3.5 h-3.5" />

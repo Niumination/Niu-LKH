@@ -1,11 +1,12 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, History, BarChart3, Sparkles } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, History, BarChart3, FileSpreadsheet, Sparkles } from 'lucide-react'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/form', label: 'Form LKH', icon: ClipboardList },
   { to: '/history', label: 'Riwayat', icon: History },
   { to: '/stats', label: 'Statistik', icon: BarChart3 },
+  { to: '/excel-preview', label: 'Excel', icon: FileSpreadsheet },
 ]
 
 export default function Layout() {

@@ -44,9 +44,9 @@ export function clearDraft() {
 export function getProfile() {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
-    return raw ? JSON.parse(raw) : { nama: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' }
+    return raw ? JSON.parse(raw) : { nama: '', nip: '', gol: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' }
   } catch {
-    return { nama: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' }
+    return { nama: '', nip: '', gol: '', jabatan: '', unitKerja: '', periodeMulai: '', periodeSelesai: '' }
   }
 }
 
