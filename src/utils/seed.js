@@ -1,13 +1,15 @@
 const ENTRIES_KEY = 'niu_lkh_entries'
 const SEED_FLAG_KEY = 'niu_lkh_seeded_v2'
 
+const BASE = import.meta.env.BASE_URL || '/'
+
 /**
  * Fetch and load LKH seed data from public/data/lkh-entries.json
  * into localStorage, merging with existing entries.
  */
 export async function seedFromJSON() {
   try {
-    const resp = await fetch('/data/lkh-entries.json')
+    const resp = await fetch(`${BASE}data/lkh-entries.json`)
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     const data = await resp.json()
     if (!data.entries || !Array.isArray(data.entries)) throw new Error('Invalid data format')
