@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, Trash2, MapPin, FileText, Search, Filter, X, Briefcase, FolderOpen, Image, Download, FileSpreadsheet, File as FileIcon } from 'lucide-react'
 import { getEntries, deleteEntry, getCalendarData, getProfile } from '../utils/storage'
+import { deleteEntry as deleteFromSupabase } from '../utils/supabaseService'
 import { exportToPDF, exportToExcel, exportToCSV } from '../utils/export'
 
 export default function History() {
@@ -39,6 +40,10 @@ export default function History() {
     const updated = deleteEntry(id)
     setEntries(updated)
     setConfirmDelete(null)
+    // Sync deletion to Supabase (best-effort)
+    deleteFromSupabase(id).catch(() => {
+      console.warn('[Niu-LKH] Supabase delete sync skipped')
+    })
   }
 
   function getDaysInMonth(year, month) {

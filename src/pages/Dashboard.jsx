@@ -1,16 +1,30 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { getEntries, getStats } from '../utils/storage'
-import { seedFromJSON, isSeeded, getMonthlyProgress } from '../utils/seed'
+import { seedFromJSON, isSeeded, getMonthlyProgress, seedToSupabase } from '../utils/seed'
+import { checkConnection, getLastSyncTime } from '../utils/supabaseService'
 import {
   LayoutDashboard, ClipboardList, History, BarChart3,
   CalendarDays, MapPin, CheckCircle2, Download, FileSpreadsheet,
-  TrendingUp, Loader2, AlertCircle, Sparkles
+  TrendingUp, Loader2, AlertCircle, Sparkles, Cloud, CloudOff, RefreshCw
 } from 'lucide-react'
 
 const MONTH_NAMES = {
   '2026-01': 'Januari', '2026-02': 'Februari', '2026-03': 'Maret',
   '2026-04': 'April', '2026-05': 'Mei', '2026-06': 'Juni',
+}
+
+function formatTimeAgo(date) {
+  const now = new Date()
+  const diffMs = now - new Date(date)
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'baru saja'
+  if (diffMin < 60) return `${diffMin} menit lalu`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} jam lalu`
+  const diffDay = Math.floor(diffHour / 24)
+  if (diffDay < 7) return `${diffDay} hari lalu`
+  return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
 }
 
 export default function Dashboard() {
@@ -19,9 +33,12 @@ export default function Dashboard() {
   const [seedInfo, setSeedInfo] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showSeedConfirm, setShowSeedConfirm] = useState(false)
+  const [cloudStatus, setCloudStatus] = useState(null) // null | {ok,count,error} | 'syncing'
+  const [lastSync, setLastSync] = useState(null)
 
   useEffect(() => {
     loadData()
+    checkCloud()
   }, [])
 
   function loadData() {
@@ -29,6 +46,23 @@ export default function Dashboard() {
     setEntries(e)
     setStats(getStats())
     setSeedInfo(isSeeded())
+    setLastSync(getLastSyncTime())
+  }
+
+  async function checkCloud() {
+    const result = await checkConnection()
+    setCloudStatus(result)
+  }
+
+  async function handleSyncToCloud() {
+    setCloudStatus('syncing')
+    try {
+      const result = await seedToSupabase()
+      setCloudStatus({ ok: true, count: result.synced })
+      setLastSync(getLastSyncTime())
+    } catch (err) {
+      setCloudStatus({ ok: false, error: err.message })
+    }
   }
 
   async function handleSeed() {
@@ -40,6 +74,11 @@ export default function Dashboard() {
       } else {
         setShowSeedConfirm(false)
         loadData()
+        // Auto-sync to Supabase after seeding
+        seedToSupabase().then(syncResult => {
+          setCloudStatus(syncResult.error ? { ok: false, error: syncResult.error } : { ok: true, count: syncResult.synced })
+          setLastSync(getLastSyncTime())
+        }).catch(() => {})
       }
     } catch (err) {
       alert('Error: ' + err.message)
@@ -80,6 +119,24 @@ export default function Dashboard() {
                 <CalendarDays className="w-3.5 h-3.5" />
                 Januari — Juni 2026
               </span>
+              {/* Cloud Sync Status */}
+              {cloudStatus === 'syncing' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs text-purple-400">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Sinkronisasi...
+                </span>
+              ) : cloudStatus?.ok ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg text-xs text-green-400">
+                  <Cloud className="w-3 h-3" />
+                  Tersimpan di cloud {lastSync ? `(${formatTimeAgo(lastSync)})` : ''}
+                </span>
+              ) : cloudStatus && !cloudStatus.ok ? (
+                <button onClick={handleSyncToCloud}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer">
+                  <CloudOff className="w-3 h-3" />
+                  Sync ke Cloud
+                </button>
+              ) : null}
             </div>
           )}
         </div>

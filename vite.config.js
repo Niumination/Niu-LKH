@@ -13,6 +13,7 @@ export default defineConfig({
         manualChunks: {
           'vendor-xlsx': ['xlsx'],
           'vendor-pdf': ['jspdf', 'jspdf-autotable'],
+          'vendor-supabase': ['@supabase/supabase-js'],
         },
       },
     },

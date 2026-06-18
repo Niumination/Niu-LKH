@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Send, Save, RotateCcw, MapPin, FileText, Calendar, User, CheckCircle2, AlertTriangle, Sparkles, RefreshCw, Briefcase, FileSignature, FolderOpen, Image, X } from 'lucide-react'
 import { getDraft, saveDraft, clearDraft, saveEntry, getProfile, saveProfile } from '../utils/storage'
 import { isSeeded } from '../utils/seed'
+import { saveEntry as saveToSupabase } from '../utils/supabaseService'
 import { compressImage, estimateImageSize } from '../utils/image'
 
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDYqsyF2a6MkK3ZvLO798dHxYhuxwp6PQEJXzOUXiry1jRxEcluKkW-ePafc4j1qy6/exec'
@@ -167,7 +168,7 @@ export default function FormLKH() {
       saveEntry({ ...formData, nama: profile.nama || formData.nama })
       clearDraft()
 
-      // Try cloud sync (best-effort, fire-and-forget)
+      // Syngkronisasi Google Script (best-effort, fire-and-forget)
       const { buktiDukung, ...entryData } = formData
       fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -181,6 +182,11 @@ export default function FormLKH() {
       }).catch(() => {
         // Cloud sync failed — data is still safe in localStorage
         console.warn('[Niu-LKH] Cloud sync skipped (offline or CORS)')
+      })
+
+      // Sync to Supabase (best-effort)
+      saveToSupabase({ ...formData, nama: profile.nama || formData.nama }).catch(() => {
+        console.warn('[Niu-LKH] Supabase sync skipped')
       })
 
       setSubmitStatus('success')

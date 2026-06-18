@@ -1,3 +1,5 @@
+import { syncAllToSupabase } from './supabaseService'
+
 const ENTRIES_KEY = 'niu_lkh_entries'
 const SEED_FLAG_KEY = 'niu_lkh_seeded_v2'
 
@@ -91,6 +93,21 @@ export function getMonthlyProgress(entries) {
     locations: data.locations.size,
     completion: Math.round((data.workdays / data.total) * 100)
   }))
+}
+
+/**
+ * Sync all seeded entries from localStorage to Supabase (cloud backup)
+ */
+export async function seedToSupabase() {
+  try {
+    const entries = getRawEntries()
+    if (entries.length === 0) return { synced: 0 }
+    const result = await syncAllToSupabase(entries)
+    return result
+  } catch (err) {
+    console.warn('[Seed] Supabase sync skipped:', err.message)
+    return { synced: 0, error: err.message }
+  }
 }
 
 function getRawEntries() {
