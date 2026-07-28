@@ -132,6 +132,11 @@ export default function ExcelPreview() {
     return String(val)
   }
 
+  function isImageDataUrl(val) {
+    if (typeof val !== 'string') return false
+    return val.startsWith('data:image/') && val.includes('base64,')
+  }
+
   const totalDataRows = sheets.reduce((sum, s) => sum + Math.max(0, s.raw.length - 1), 0)
 
   return (
@@ -274,6 +279,13 @@ export default function ExcelPreview() {
                           {cols.map((_, ci) => {
                             const val = cellValue(row[ci])
                             const isEmpty = val === '-' || val === ''
+                            if (isImageDataUrl(val)) {
+                              return (
+                                <td key={ci} className="px-3 py-2 text-xs whitespace-pre-wrap max-w-[300px]">
+                                  <img src={val} alt="Bukti dukung" className="max-h-24 rounded border border-slate-700" />
+                                </td>
+                              )
+                            }
                             return (
                               <td key={ci} className={`px-3 py-2 text-xs ${
                                 isEmpty ? 'text-slate-700 italic' : 'text-slate-300'
