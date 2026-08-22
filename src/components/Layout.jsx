@@ -1,5 +1,12 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ClipboardList, History, BarChart3, FileSpreadsheet, Sparkles } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ClipboardList,
+  History,
+  BarChart3,
+  FileSpreadsheet,
+  Sparkles,
+} from 'lucide-react'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,12 +18,19 @@ const navItems = [
 
 export default function Layout() {
   const location = useLocation()
-  const currentLabel = navItems.find(n => n.to === location.pathname)?.label ?? 'Niu-LKH'
+  const currentLabel = navItems.find((n) => n.to === location.pathname)?.label ?? 'Niu-LKH'
 
   return (
     <div className="min-h-screen bg-cyber-950 relative">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-cyan-500 focus:text-cyber-950 focus:rounded-lg focus:font-semibold"
+      >
+        Lewati ke konten utama
+      </a>
+
       {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-3xl -top-48 -left-48 animate-pulse-glow" />
         <div className="absolute w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
@@ -24,7 +38,6 @@ export default function Layout() {
 
       {/* Sidebar - Desktop */}
       <aside className="fixed left-0 top-0 h-full w-20 lg:w-64 bg-cyber-900/80 backdrop-blur-xl border-r border-slate-800 z-50 hidden md:flex flex-col">
-        {/* Logo */}
         <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-lg flex items-center justify-center">
@@ -34,8 +47,7 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-4 px-2 lg:px-3 space-y-1">
+        <nav className="flex-1 py-4 px-2 lg:px-3 space-y-1" aria-label="Navigasi utama">
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -48,59 +60,62 @@ export default function Layout() {
                 }`
               }
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden lg:block text-sm font-medium">{label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                  <span className="hidden lg:block text-sm font-medium">{label}</span>
+                  <span className="sr-only">{isActive ? ' (halaman aktif)' : ''}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Bottom */}
         <div className="p-4 border-t border-slate-800 hidden lg:block">
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Sparkles className="w-3 h-3 text-cyan-400" />
-            <span>Niu-LKH v3.1</span>
+            <Sparkles className="w-3 h-3 text-cyan-400" aria-hidden="true" />
+            <span>Niu-LKH v3.2</span>
           </div>
         </div>
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-cyber-900/90 backdrop-blur-xl border-t border-slate-800 z-50 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-cyber-900/90 backdrop-blur-xl border-t border-slate-800 z-50 md:hidden" aria-label="Navigasi seluler">
         <div className="flex justify-around py-2">
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-all ${
-                  isActive ? 'text-cyan-400' : 'text-slate-500'
-                }`
+                `flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-all ${isActive ? 'text-cyan-400' : 'text-slate-500'}`
               }
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon className="w-5 h-5" aria-hidden="true" />
+                  <span className="text-[10px] font-medium">{label}</span>
+                  <span className="sr-only">{isActive ? ' (halaman aktif)' : ''}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="md:ml-20 lg:ml-64 pb-20 md:pb-0 min-h-screen relative z-10">
-        {/* Top Bar */}
+      <main id="main-content" className="md:ml-20 lg:ml-64 pb-20 md:pb-0 min-h-screen relative z-10">
         <header className="sticky top-0 z-40 bg-cyber-950/80 backdrop-blur-xl border-b border-slate-800">
           <div className="flex items-center justify-between h-14 px-4 lg:px-8">
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse-glow" />
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse-glow" aria-hidden="true" />
               <h2 className="text-slate-200 font-semibold text-sm lg:text-base">{currentLabel}</h2>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-500 hidden sm:block">
-                {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </span>
-            </div>
+            <span className="text-xs text-slate-500 hidden sm:block">
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="p-4 lg:p-8">
           <Outlet />
         </div>

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-cyber-950: #0a0a1a;
+  --color-cyber-950: #070716;
   --color-cyber-900: #0f0f2a;
   --color-cyber-800: #14143a;
   --color-cyber-700: #1a1a4a;
@@ -19,6 +19,49 @@
   --color-green-400: #4ade80;
   --color-red-400: #f87171;
   --color-amber-400: #fbbf24;
+  --font-sans: "Segoe UI Variable", "Segoe UI", "SF Pro Display", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Avenir Next", "Segoe UI Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-cyber-950 text-slate-300 font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-cyan-500/70 ring-offset-2 ring-offset-cyber-950;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-cyber-900/60 border border-slate-800 rounded-2xl;
+  }
+  .input-base {
+    @apply w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all outline-none;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 transition-all;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-slate-300 bg-slate-800 border border-slate-700 hover:border-cyan-500/30 transition-all;
+  }
 }
 
 @keyframes pulse-glow {
@@ -41,13 +84,21 @@
   to { opacity: 1; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
 .animate-float { animation: float 6s ease-in-out infinite; }
 .animate-slide-up { animation: slide-up 0.5s ease-out; }
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

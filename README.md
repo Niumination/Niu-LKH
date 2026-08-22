@@ -23,6 +23,11 @@
 | Tailwind CSS | 4.3 |
 | React Router | 7.6 |
 | Lucide Icons | 0.546 |
+| React Hook Form | 7.86 |
+| Zod | 3.25 |
+| Vitest | 4.1 |
+| Playwright | 1.62 |
+| TypeScript | 7.0 |
 
 ## 🛠️ Development
 
@@ -38,6 +43,15 @@ npm run build
 
 # Preview build
 npm run preview
+
+# Unit test (Vitest + jsdom)
+npm test
+
+# Type check (TypeScript / JSDoc)
+npm run typecheck
+
+# Checks: deps, typecheck, test, build
+npm run check
 ```
 
 ## 🌐 Deployment
@@ -67,10 +81,14 @@ URL endpoint dikonfigurasi di `src/pages/FormLKH.jsx`.
 
 ## 📦 Status Proyek
 
-|- **v3.1** — Fitur upload bukti dukung (foto) dengan kompresi otomatis + export PDF (foto embedded), Excel, CSV. CI/CD auto-deploy via GitHub Actions.
-- **v3.0** — Restrukturisasi form sesuai format LKH Excel (Tanggal, Uraian Kegiatan, Tempat, Penjab, Dasar Surat, Output/Hasil Kerja)
-- **v2.0** — Rebuild total dari CRA ke Vite + Tailwind v4
-- Multi-page SPA dengan 4 halaman (Dashboard, Form, Riwayat, Statistik)
+| Versi | Catatan |
+|---|---|
+| v3.2 | React Hook Form + Zod validation, unit test (Vitest), E2E (Playwright), TypeScript/JSDoc typing, a11y & SEO improvements, Supabase schema guidance |
+| v3.1 | Upload bukti dukung (foto) dengan kompresi otomatis + export PDF (foto embedded), Excel, CSV. CI/CD auto-deploy via GitHub Actions |
+| v3.0 | Restrukturisasi form sesuai format LKH Excel |
+| v2.0 | Rebuild total dari CRA ke Vite + Tailwind v4 |
+
+- Multi-page SPA dengan 5 halaman (Dashboard, Form, Riwayat, Statistik, Excel Preview)
 - Penyimpanan lokal + sinkronisasi cloud
 
 ---
