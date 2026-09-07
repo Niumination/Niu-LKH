@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { saveEntry, getEntries, getProfile, saveProfile, clearAll } from '../../src/utils/storage'
+import { saveEntry, getEntries, getProfile, saveProfile, clearAll, getStats } from '../../src/utils/storage'
 
 const entry = {
   nama: 'Afrizal Munthe',
@@ -44,5 +44,12 @@ describe('storage', () => {
     saveEntry(entry)
     clearAll()
     expect(getEntries()).toHaveLength(0)
+  })
+
+  it('computes stats without error', () => {
+    saveEntry(entry)
+    const stats = getStats()
+    expect(stats.total).toBe(1)
+    expect(stats.tempat['Kantor']).toBe(1)
   })
 })

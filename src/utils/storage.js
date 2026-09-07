@@ -1,5 +1,5 @@
 import { validateLkh, validateProfile } from '../lib/validation'
-import { todayLocalISO, toLocalDate, getLocalWeekStart } from '../lib/date'
+import { toLocalISODate, todayLocalISO, toLocalDate, getLocalWeekStart } from '../lib/date'
 
 const STORAGE_KEY = 'niu_lkh_entries'
 const DRAFT_KEY = 'niu_lkh_draft'
