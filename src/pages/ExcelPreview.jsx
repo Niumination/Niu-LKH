@@ -1,9 +1,8 @@
 import { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import {
-  FileSpreadsheet, Upload, Table, Sheet as SheetIcon,
-  Download, Trash2, AlertCircle, CheckCircle2, ChevronDown, ChevronRight,
-  Eye, EyeOff, Search, X
+  FileSpreadsheet, Upload, Sheet as SheetIcon,
+  Trash2, AlertCircle, CheckCircle2, Search, X
 } from 'lucide-react'
 
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -159,7 +158,16 @@ export default function ExcelPreview() {
         <div
           onDrop={handleDrop}
           onDragOver={e => e.preventDefault()}
-          className="relative border-2 border-dashed border-slate-700 hover:border-cyan-500/40 rounded-2xl p-12 lg:p-16 text-center transition-all group cursor-pointer"
+          role="button"
+          tabIndex={0}
+          aria-label="Upload file Excel. Klik atau seret file .xlsx ke sini"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              fileRef.current?.click()
+            }
+          }}
+          className="relative border-2 border-dashed border-slate-700 hover:border-cyan-500/40 rounded-2xl p-12 lg:p-16 text-center transition-all group cursor-pointer focus-visible:ring-2 ring-cyan-500"
           onClick={() => fileRef.current?.click()}
         >
           <div className="absolute inset-0 bg-cyan-500/[0.02] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -219,8 +227,9 @@ export default function ExcelPreview() {
 
           {/* Search */}
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            <label htmlFor="excel-search" className="sr-only">Cari di sheet</label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
+            <input id="excel-search" type="search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               placeholder={`Cari di sheet ${sheetName}...`}
               className="w-full pl-10 pr-4 py-2.5 bg-cyber-900/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500/50 transition-all outline-none text-sm" />
           </div>
@@ -252,6 +261,7 @@ export default function ExcelPreview() {
             <div className="bg-cyber-900/60 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full text-sm">
+                  <caption className="sr-only">Pratinjau isi file Excel sheet {sheetName}</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-cyber-800 border-b border-slate-700">
                       <th className="px-3 py-2.5 text-left text-[10px] text-slate-500 font-medium uppercase tracking-wider w-10">#</th>
@@ -282,7 +292,7 @@ export default function ExcelPreview() {
                             if (isImageDataUrl(val)) {
                               return (
                                 <td key={ci} className="px-3 py-2 text-xs whitespace-pre-wrap max-w-[300px]">
-                                  <img src={val} alt="Bukti dukung" className="max-h-24 rounded border border-slate-700" />
+                                  <img src={val} alt="Gambar di dalam data Excel" className="max-h-24 rounded border border-slate-700" />
                                 </td>
                               )
                             }

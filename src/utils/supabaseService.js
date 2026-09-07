@@ -1,13 +1,31 @@
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseAvailable } from '../lib/supabase'
 
 const TABLE = 'lkh_entries'
+const BATCH_SIZE = 50
+const SELECTED_COLUMNS = [
+  'id',
+  'user_id',
+  'tanggal',
+  'hari',
+  'jam',
+  'uraian_kegiatan',
+  'tempat',
+  'penjab',
+  'dasar_surat',
+  'output_hasil_kerja',
+  'bukti_dukung',
+  'nama',
+  'nip',
+  'gol',
+  'jabatan',
+  'unit_kerja',
+  'created_at',
+].join(',')
 
-/**
- * Map frontend entry format → Supabase row
- */
 function toSupabaseFormat(entry) {
+  const now = new Date().toISOString()
   return {
-    id: entry.id,                    // UUID string → TEXT PRIMARY KEY
+    id: entry.id,
     user_id: 'afrizal',
     tanggal: entry.tanggal,
     hari: entry.hari || '',
@@ -23,12 +41,10 @@ function toSupabaseFormat(entry) {
     gol: entry.gol || 'PENATA MUDA, II/d',
     jabatan: entry.jabatan || 'PRANATA KOMPUTER - TERAMPIL',
     unit_kerja: entry.unitKerja || 'Dinas Komunikasi dan Informatika Kabupaten Aceh Tengah',
+    updated_at: now,
   }
 }
 
-/**
- * Map Supabase row → frontend entry format
- */
 function fromSupabaseFormat(row) {
   return {
     id: row.id,
@@ -50,13 +66,11 @@ function fromSupabaseFormat(row) {
   }
 }
 
-/**
- * Fetch all entries from Supabase
- */
 export async function fetchEntries() {
+  if (!supabaseAvailable) return []
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select(SELECTED_COLUMNS)
     .order('tanggal', { ascending: false })
 
   if (error) {
@@ -66,15 +80,10 @@ export async function fetchEntries() {
   return (data || []).map(fromSupabaseFormat)
 }
 
-/**
- * Save a single entry to Supabase (upsert by id)
- */
 export async function saveEntry(entry) {
+  if (!supabaseAvailable) throw new Error('Supabase tidak dikonfigurasi')
   const row = toSupabaseFormat(entry)
-  const { data, error } = await supabase
-    .from(TABLE)
-    .upsert(row, { onConflict: 'id' })
-
+  const { data, error } = await supabase.from(TABLE).upsert(row, { onConflict: 'id' })
   if (error) {
     console.error('[Supabase] save error:', error)
     throw error
@@ -82,38 +91,24 @@ export async function saveEntry(entry) {
   return data
 }
 
-/**
- * Delete an entry from Supabase by id
- */
 export async function deleteEntry(id) {
-  const { error } = await supabase
-    .from(TABLE)
-    .delete()
-    .eq('id', id)
-
+  if (!supabaseAvailable) throw new Error('Supabase tidak dikonfigurasi')
+  const { error } = await supabase.from(TABLE).delete().eq('id', id)
   if (error) {
     console.error('[Supabase] delete error:', error)
     throw error
   }
 }
 
-/**
- * Sync ALL localStorage entries to Supabase (batch upsert)
- */
 export async function syncAllToSupabase(localEntries) {
+  if (!supabaseAvailable) return { synced: 0, error: 'Supabase tidak dikonfigurasi' }
   if (!localEntries || localEntries.length === 0) return { synced: 0 }
 
   const rows = localEntries.map(toSupabaseFormat)
-  const now = new Date().toISOString()
-
   let synced = 0
-  // Upsert in batches of 50
-  for (let i = 0; i < rows.length; i += 50) {
-    const batch = rows.slice(i, i + 50).map(r => ({ ...r, updated_at: now }))
-    const { error } = await supabase
-      .from(TABLE)
-      .upsert(batch, { onConflict: 'id' })
-
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE)
+    const { error } = await supabase.from(TABLE).upsert(batch, { onConflict: 'id' })
     if (error) {
       console.error(`[Supabase] batch ${i} error:`, error)
       throw error
@@ -125,15 +120,10 @@ export async function syncAllToSupabase(localEntries) {
   return { synced }
 }
 
-/**
- * Check Supabase connection + table health
- */
 export async function checkConnection() {
+  if (!supabaseAvailable) return { ok: false, error: 'Supabase tidak dikonfigurasi' }
   try {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('id', { count: 'exact', head: true })
-
+    const { data, error } = await supabase.from(TABLE).select('id', { count: 'exact', head: true })
     if (error) return { ok: false, error: error.message }
     return { ok: true, count: data?.length || 0 }
   } catch (err) {
@@ -141,9 +131,6 @@ export async function checkConnection() {
   }
 }
 
-/**
- * Get last sync timestamp
- */
 export function getLastSyncTime() {
   const t = localStorage.getItem('niu_lkh_sync_time')
   if (!t) return null

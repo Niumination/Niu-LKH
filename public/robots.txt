@@ -1,0 +1,8 @@
+# /robots.txt — Niu-LKH
+User-agent: *
+Allow: /
+
+# Static files needed for rendering should remain accessible
+# Disallow: /static/
+
+Sitemap: https://niumination.github.io/Niu-LKH/sitemap.xml

@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, Trash2, MapPin, FileText, Search, Filter, X, Briefcase, FolderOpen, Image, Download, FileSpreadsheet, File as FileIcon } from 'lucide-react'
 import { getEntries, deleteEntry, getCalendarData, getProfile } from '../utils/storage'
 import { deleteEntry as deleteFromSupabase } from '../utils/supabaseService'
-import { exportToPDF, exportToExcel, exportToCSV } from '../utils/export'
+import { todayLocalISO } from '../lib/date'
+
+const loadExport = () => import('../utils/export')
 
 export default function History() {
   const [entries, setEntries] = useState([])
@@ -56,7 +58,7 @@ export default function History() {
 
   const monthDays = getDaysInMonth(currentYear, currentMonth)
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayLocalISO()
 
   const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
@@ -83,12 +85,12 @@ export default function History() {
         <div className="bg-cyber-900/60 border border-slate-800 rounded-2xl p-6">
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-6">
-            <button onClick={() => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) } else setCurrentMonth(m => m - 1) }}
+            <button aria-label="Bulan sebelumnya" onClick={() => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) } else setCurrentMonth(m => m - 1) }}
               className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h3 className="text-white font-semibold text-lg">{monthNames[currentMonth]} {currentYear}</h3>
-            <button onClick={() => { if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1) } else setCurrentMonth(m => m + 1) }}
+            <button aria-label="Bulan berikutnya" onClick={() => { if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1) } else setCurrentMonth(m => m + 1) }}
               className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all">
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -139,14 +141,12 @@ export default function History() {
                 {filteredEntries.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => {
-                      const profile = getProfile()
-                      exportToPDF(filteredEntries, profile)
+                      loadExport().then(m => m.exportToPDF(filteredEntries, getProfile()))
                     }} className="flex items-center gap-1 px-2 py-1 bg-slate-800/60 hover:bg-red-800/30 border border-slate-700 hover:border-red-500/30 rounded-lg text-[10px] text-slate-400 hover:text-red-400 transition-all">
                       <FileIcon className="w-3 h-3" /> PDF
                     </button>
                     <button onClick={() => {
-                      const profile = getProfile()
-                      exportToExcel(filteredEntries, profile)
+                      loadExport().then(m => m.exportToExcel(filteredEntries, getProfile()))
                     }} className="flex items-center gap-1 px-2 py-1 bg-slate-800/60 hover:bg-green-800/30 border border-slate-700 hover:border-green-500/30 rounded-lg text-[10px] text-slate-400 hover:text-green-400 transition-all">
                       <FileSpreadsheet className="w-3 h-3" /> XLSX
                     </button>
@@ -172,14 +172,15 @@ export default function History() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              <label htmlFor="history-search" className="sr-only">Cari laporan</label>
+              <input id="history-search" type="search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Cari uraian kegiatan, tempat, output..."
                 className="w-full pl-10 pr-4 py-3 bg-cyber-900/60 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:border-cyan-500/50 transition-all outline-none text-sm" />
             </div>
             {allTempat.length > 0 && (
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <select value={filterTempat} onChange={e => setFilterTempat(e.target.value)}
+                <select aria-label="Filter tempat" value={filterTempat} onChange={e => setFilterTempat(e.target.value)}
                   className="pl-10 pr-8 py-3 bg-cyber-900/60 border border-slate-800 rounded-xl text-slate-100 focus:border-cyan-500/50 transition-all outline-none text-sm appearance-none cursor-pointer min-w-[150px]">
                   <option value="">Semua Tempat</option>
                   {allTempat.map(l => <option key={l} value={l}>{l}</option>)}
@@ -203,21 +204,18 @@ export default function History() {
             {filteredEntries.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-600 uppercase tracking-wider">Export:</span>
-                <button onClick={() => {
-                  const profile = getProfile()
-                  exportToPDF(filteredEntries, profile)
+                <button aria-label="Export PDF dengan foto bukti dukung" onClick={() => {
+                  loadExport().then(m => m.exportToPDF(filteredEntries, getProfile()))
                 }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-red-800/30 border border-slate-700 hover:border-red-500/30 rounded-lg text-xs text-slate-300 hover:text-red-400 transition-all" title="Export PDF dengan foto bukti dukung">
                   <FileIcon className="w-3.5 h-3.5" /> PDF
                 </button>
-                <button onClick={() => {
-                  const profile = getProfile()
-                  exportToExcel(filteredEntries, profile)
+                <button aria-label="Export Excel" onClick={() => {
+                  loadExport().then(m => m.exportToExcel(filteredEntries, getProfile()))
                 }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-green-800/30 border border-slate-700 hover:border-green-500/30 rounded-lg text-xs text-slate-300 hover:text-green-400 transition-all" title="Export Excel">
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
                 </button>
-                <button onClick={() => {
-                  const profile = getProfile()
-                  exportToCSV(filteredEntries, profile)
+                <button aria-label="Export CSV" onClick={() => {
+                  loadExport().then(m => m.exportToCSV(filteredEntries, getProfile()))
                 }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-cyan-800/30 border border-slate-700 hover:border-cyan-500/30 rounded-lg text-xs text-slate-300 hover:text-cyan-400 transition-all" title="Export CSV">
                   <Download className="w-3.5 h-3.5" /> CSV
                 </button>
@@ -250,13 +248,13 @@ export default function History() {
                         <span className="flex items-center gap-1 text-green-400/80"><FolderOpen className="w-3 h-3" /> {entry.outputHasilKerja}</span>
                       </div>
                       {entry.buktiDukung && (
-                        <button onClick={() => setPreviewImage(entry.buktiDukung)}
+                        <button aria-label={`Lihat bukti dukung ${entry.uraianKegiatan || ''}`} onClick={() => setPreviewImage(entry.buktiDukung)}
                           className="mt-2 inline-flex items-center gap-1 text-xs text-pink-400/70 hover:text-pink-400 transition-colors">
                           <Image className="w-3 h-3" /> Lihat bukti dukung
                         </button>
                       )}
                     </div>
-                    <button onClick={() => setConfirmDelete(entry.id)}
+                    <button aria-label={`Hapus laporan ${entry.uraianKegiatan || ''}`} onClick={() => setConfirmDelete(entry.id)}
                       className="p-2 hover:bg-red-500/10 rounded-lg text-slate-600 hover:text-red-400 transition-all flex-shrink-0">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -271,8 +269,8 @@ export default function History() {
       {/* Delete Confirmation */}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setConfirmDelete(null)}>
-          <div className="bg-cyber-900 border border-slate-800 rounded-xl p-6 max-w-sm mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h4 className="text-white font-semibold mb-2">Hapus Laporan?</h4>
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title" className="bg-cyber-900 border border-slate-800 rounded-xl p-6 max-w-sm mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h4 id="delete-dialog-title" className="text-white font-semibold mb-2">Hapus Laporan?</h4>
             <p className="text-slate-400 text-sm mb-4">Data yang dihapus tidak bisa dikembalikan.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmDelete(null)}
@@ -287,12 +285,12 @@ export default function History() {
       {/* Image Preview Modal */}
       {previewImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setPreviewImage(null)}>
-          <div className="relative max-w-3xl max-h-[90vh] mx-4" onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Pratinjau bukti dukung" className="relative max-w-3xl max-h-[90vh] mx-4" onClick={e => e.stopPropagation()}>
             <button onClick={() => setPreviewImage(null)}
               className="absolute -top-3 -right-3 p-1.5 bg-slate-900 border border-slate-700 rounded-full text-slate-400 hover:text-white hover:bg-red-600/60 transition-all z-10">
               <X className="w-4 h-4" />
             </button>
-            <img src={previewImage} alt="Bukti dukung"
+            <img src={previewImage} alt="Pratinjau bukti dukung laporan"
               className="max-w-full max-h-[85vh] rounded-2xl border border-slate-700 shadow-2xl object-contain bg-slate-900" />
           </div>
         </div>
@@ -312,13 +310,13 @@ function EntryCard({ entry, onDelete, onPreview }) {
             <span className="text-green-400/70">{entry.outputHasilKerja}</span>
           </div>
           {entry.buktiDukung && (
-            <button onClick={() => onPreview(entry.buktiDukung)}
+            <button aria-label={`Lihat bukti dukung ${entry.uraianKegiatan || ''}`} onClick={() => onPreview(entry.buktiDukung)}
               className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-pink-400/70 hover:text-pink-400 transition-colors">
               <Image className="w-3 h-3" /> Bukti dukung
             </button>
           )}
         </div>
-        <button onClick={() => onDelete(entry.id)} className="p-1 hover:bg-red-500/10 rounded text-slate-600 hover:text-red-400 transition-all">
+        <button aria-label={`Hapus laporan ${entry.uraianKegiatan || ''}`} onClick={() => onDelete(entry.id)} className="p-1 hover:bg-red-500/10 rounded text-slate-600 hover:text-red-400 transition-all">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
