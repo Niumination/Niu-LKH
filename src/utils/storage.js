@@ -98,7 +98,7 @@ function getWeekRange() {
   const startDate = toLocalDate(start)
   const end = new Date(startDate)
   end.setDate(startDate.getDate() + 6)
-  return { start, end: todayLocalISO(end) }
+  return { start, end: toLocalISODate(end) }
 }
 
 export function getEntriesByDate(date) {

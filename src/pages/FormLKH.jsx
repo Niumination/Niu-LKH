@@ -162,10 +162,9 @@ export default function FormLKH() {
   async function handleFormSubmit(values) {
     setSubmitStatus(null)
     try {
-      // Merge profile fields (gol/jabatan/unitKerja are only rendered on the
-      // profile tab, so they are not part of the form-tab registered values).
+      const { periodeMulai, periodeSelesai, ...restValues } = values
       const entry = {
-        ...values,
+        ...restValues,
         nama: profile.nama || values.nama,
         nip: profile.nip || values.nip,
         gol: profile.gol || '',
@@ -192,8 +191,6 @@ export default function FormLKH() {
         gol: profile.gol || '',
         jabatan: profile.jabatan || '',
         unitKerja: profile.unitKerja || '',
-        periodeMulai: profile.periodeMulai || '',
-        periodeSelesai: profile.periodeSelesai || '',
         tanggal: values.tanggal,
         jam: '',
         uraianKegiatan: '',
