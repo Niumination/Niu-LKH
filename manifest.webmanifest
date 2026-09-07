@@ -1,0 +1,19 @@
+{
+  "name": "Niu-LKH — Laporan Kegiatan Harian Digital",
+  "short_name": "Niu-LKH",
+  "description": "Pencatatan dan pelaporan kegiatan harian digital.",
+  "start_url": "/Niu-LKH/#/dashboard",
+  "scope": "/Niu-LKH/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/Niu-LKH/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
