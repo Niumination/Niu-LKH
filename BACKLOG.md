@@ -10,3 +10,9 @@
 
 - [ ] **Health check** — Pastikan GH Pages & Supabase masih berjalan — @niu-lkh
 - [ ] **User feedback** — Pantau feedback user — @niu-lkh
+
+## Recent Activity
+
+- [x] **Import toLocalISODate + getStats test** — Fix storage utils (`a0ac0cb`) — @niu-lkh
+- [x] **PR #1 merged** — 17 autoskills applied + harden Niu-LKH (`c70399a`) — @niu-lkh
+- [x] **localStorage mock setup** — Vitest environment (`7975eda`) — @niu-lkh
